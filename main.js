@@ -17,7 +17,7 @@ var config = {
 
 var Fetcher = function (config, callback) {
   this.downloadPage = function (pageNumber, callback) {
-    logger.log('loading page: ' + pageNumber + 'from' + this.manifest.length);
+    logger.log('loading page: ' + pageNumber + 'from' + this.manifest.files.length);
 
     var offset = this.manifest.files[pageNumber].offset;
     var size = this.manifest.files[pageNumber].size;
@@ -53,6 +53,7 @@ var Renderer = function (config, callback) {
     callback();
   });
 };
+
 function main(page) {
   logger.log('worker started');
   var renderer = new Renderer(config, function () {
