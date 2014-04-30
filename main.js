@@ -1,3 +1,4 @@
+'use strict';
 // ================================ Fetcher ======================================================
 //
 //
@@ -27,10 +28,6 @@ var Fetcher = function (config, callback) {
     logger.log('there are ' + data.files.length + ' pages');
     callback();
   }.bind(this));
-};
-
-var ZPCoder = function (input) {
-  this.data = input.data || null;
 };
 
 // ============================= Renderer ========================================================
@@ -115,7 +112,7 @@ var Renderer = function (config, callback) {
   });
 };
 // ========================================= ZPNumContext =======================================
-// 
+//
 //
 //
 var ZPNumContext = function (amin, amax) {
@@ -124,8 +121,8 @@ var ZPNumContext = function (amin, amax) {
       throw error.incorrectInput;
     }
 
-    min = newMin;
-    max = newMax;
+    this.min = newMin;
+    this.max = newMax;
   };
 
   this.reset = function () {
@@ -135,8 +132,6 @@ var ZPNumContext = function (amin, amax) {
     init();
   };
 
-  var min;
-  var max;
   var nodes = [];
   var n;
   var allocated;
@@ -150,7 +145,7 @@ var ZPNumContext = function (amin, amax) {
     return n++;
   };
 
-  var getLeft = function (i) {
+  this.getLeft = function (i) {
     if (i >= n) {
       throw error.incorrectInput;
     }
@@ -165,8 +160,8 @@ var ZPNumContext = function (amin, amax) {
     return result;
   };
 
-  var getRight = function () {
-    if (i >= n) {  
+  this.getRight = function (i) {
+    if (i >= n) {
       throw  error.incorrectInput;
     }
 
@@ -190,19 +185,220 @@ var ZPNumContext = function (amin, amax) {
     throw error.incorrectInput;
   }
 
-  min = amin;
-  max = amax;
+  this.min = amin;
+  this.max = amax;
   init();
 };
+// ============================= ZPCoder =======================================================
+//
+//
+//
+
+
+var ZPDecoder = function (input) {
+  // public:
+  this.data = input.data || null;
+
+  this.decodeWithoutContext = function () {
+    var dummy = 0;
+    return decodeSub(dummy, 0x8000 + (a >> 1));
+  };
+
+  this.decodeWithBit = function (context) {
+    var z = a + ZP_p_table[context];
+    if (z <= fence) {
+      a = z;
+      return context & 1;
+    }
+    var d = 0x6000 + ((z + a) >> 2);
+    if (z > d) {
+      z = d;
+    }
+    return decodeSub(context, z);
+  };
+  this.decodeWithNumContext = function (context) {
+    var negative = false;
+    var cutoff = 0;
+    var range = 0xFFFFFFFF;
+    var currentNode = 0;
+    var phase = 1;
+    var low = context.min;
+    var high = context.max;
+
+    while(range != 1)
+    {
+      var decision;
+      decision = low >= cutoff || (high >= cutoff && this.decodeWithBit(context.nodes[currentNode]));
+
+      currentNode = decision ? context.getRight(currentNode) : context.getLeft (currentNode);
+
+      switch (phase) {
+        case 1:
+          negative = !decision;
+          if (negative) {
+              var temp = - low - 1;
+              low = - high - 1;
+              high = temp;
+          }
+          phase = 2; cutoff = 1;
+          break;
+        case 2:
+          if (!decision) {
+            phase = 3;
+            range = (cutoff + 1) / 2;
+            if (range == 1)
+              cutoff = 0;
+            else
+              cutoff -= range / 2;
+          } else {
+            cutoff += cutoff + 1;
+          }
+          break;
+        case 3:
+          range /= 2;
+          if (range != 1) {
+            if (!decision)
+              cutoff -= range / 2;
+            else
+              cutoff += range / 2;
+          } else if (!decision) {
+            cutoff--;
+          }
+          break;
+      }
+    }
+    return negative ? -cutoff-1 : cutoff;
+  };
+
+  this.ptr = 0;
+
+  // private:
+  var a;
+  var code;
+  var fence;
+  var buffer;
+  var byte;
+  var scount;
+  var delay;
+  var bytesLeft;
+
+  function nextByte(char) {
+    if(bytesLeft === 0 || this.ptr + 1 === this.data.length) {
+      return false;
+    }
+    char = this.data[this.ptr++];
+    --bytesLeft;
+    return true;
+  }
+
+  function open() {
+    if (!nextByte(byte)) {
+      byte = 0xff;
+    }
+    code = byte << 8;
+    if (!nextByte(byte)) {
+      byte = 0xff;
+    }
+    code = code | byte;
+    delay = 25;
+    scount = 0;
+    preload();
+
+    fence = code;
+    if (code >= 0x8000) {
+      fence = 0x7fff;
+    }
+  }
+
+  function preload() {
+    while (scount <= 24) {
+      if (!nextByte(byte)) {
+        byte = 0xff;
+        delay--;
+        assert(delay);
+      }
+      buffer = (buffer << 8) | byte;
+      scount += 8;
+    }
+  }
+
+  function ffz(value) {
+    return value >= 0xff00 ? ZP_FFZ_table[value & 0xff] + 8 : ZP_FFZ_table[(value >> 8) & 0xff];
+  }
+
+  function decodeSub(context, z) {
+    var bit = context & 1;
+
+    if (z > code)
+    {
+      z = 0x10000 - z;
+      a += z;
+      code = code + z;
+
+      context = ZP_dn_table[context];
+
+      var shift = ffz(a);
+      scount -= shift;
+      a = (a << shift);
+      code = (code << shift) | ((buffer >> scount) & ((1 << shift) - 1));
+      if (scount < 16) {
+        preload();
+      }
+
+      fence = code;
+      if (code >= 0x8000) {
+        fence = 0x7fff;
+      }
+      return bit ^ 1;
+    } else {
+      if (a >= ZP_m_table[context])
+        context = ZP_up_table[context];
+
+      scount -= 1;
+      a = z << 1;
+      code = (code << 1) | ((buffer >> scount) & 1);
+      if (scount < 16) {
+        preload();
+      }
+
+      fence = code;
+      if (code >= 0x8000) {
+        fence = 0x7fff;
+      }
+      return bit;
+    }
+  }
+};
+
 // Errors
 // =============================================================================================
 
 var error = {
-  incorrectInput: 'Incorrect input'
+  incorrectInput: 'Incorrect input',
+  assertError: 'Assert error'
 };
 
 // Library
 // ============================================================================================
+function initTables() {
+  for (var i = 0; i < 256; i++) {
+    if (ZP_m_table[i] == 0xFFFF) {
+      for (var j = i; j < 256; j++) {
+        ZP_m_table[j] = 0;
+      }
+      break;
+    }
+  }
+}
+
+function initFfzTable() {
+  for (var i = 0; i < 256; i++) {
+    ZP_FFZ_table[i] = 0;
+    for (var j = i; j & 0x80; j <<= 1) {
+      ZP_FFZ_table[i] += 1;
+    }
+  }
+}
 
 function clearArray(array) {
   while (array.length > 0) {
@@ -210,12 +406,19 @@ function clearArray(array) {
   }
 }
 
+function assert(value) {
+  if (!value) {
+    throw error.assertError;
+  }
+}
 // Constants region:
 // // ============================================================================================
 
 var CHUNK_ID_FORM = 0x464F524D;
 var CHUNK_ID_Sjbz = 0x536A627A;
 var ID_DJVU = 0x444A5655;
+
+var ZP_FFZ_table = [];
 
 var ZP_p_table = [
   0x8000,0x8000,0x8000,0x6bbd,0x6bbd,0x5d45,0x5d45,0x51b9,0x51b9,0x4813,0x4813,
@@ -281,6 +484,9 @@ var ZP_dn_table = [
   44,231,38,229,34,227,28,225,22,223,16,221,220,63,8,55,224,51,2,47,87,43,246,37,
   244,33,238,27,236,21,16,15,8,241,242,7,10,245,2,1,83,250,2,143,246
 ];
+
+initFfzTable();
+initTables();
 // ==============================================================================================
 
 // ========================================== main ==========================================
