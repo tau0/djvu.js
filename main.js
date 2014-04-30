@@ -1,4 +1,3 @@
-'use strict';
 // ================================ Fetcher ======================================================
 //
 //
@@ -126,20 +125,20 @@ var ZPNumContext = function (amin, amax) {
   };
 
   this.reset = function () {
-    clearArray(nodes);
+    clearArray(this.nodes);
     clearArray(left);
     clearArray(right);
     init();
   };
 
-  var nodes = [];
+  this.nodes = [];
   var n;
   var allocated;
   var left = [];
   var right = [];
 
-  var newNode = function () {
-    nodes[n] = 0;
+  this.newNode = function () {
+    this.nodes[n] = 0;
     left[n] = 0;
     right[n] = 0;
     return n++;
@@ -155,7 +154,7 @@ var ZPNumContext = function (amin, amax) {
       return result;
     }
 
-    result = newNode();
+    result = this.newNode();
     left[i] = result;
     return result;
   };
@@ -170,14 +169,14 @@ var ZPNumContext = function (amin, amax) {
       return result;
     }
 
-    result = newNode();
+    result = this.newNode();
     right[i] = result;
     return result;
   };
 
-  var init = function () {
+  this.init = function () {
     n = 1;
-    nodes[0] = 0;
+    this.nodes[0] = 0;
     left[0] = right[0] = 0;
   };
 
@@ -187,7 +186,7 @@ var ZPNumContext = function (amin, amax) {
 
   this.min = amin;
   this.max = amax;
-  init();
+  this.init();
 };
 // ============================= ZPCoder =======================================================
 //
@@ -198,10 +197,11 @@ var ZPNumContext = function (amin, amax) {
 var ZPDecoder = function (input) {
   // public:
   this.data = input.data || null;
+  this.ptr = 0;
 
   this.decodeWithoutContext = function () {
     var dummy = 0;
-    return decodeSub(dummy, 0x8000 + (a >> 1));
+    return this.decodeSub(dummy, 0x8000 + (a >> 1));
   };
 
   this.decodeWithBit = function (context) {
@@ -214,7 +214,47 @@ var ZPDecoder = function (input) {
     if (z > d) {
       z = d;
     }
-    return decodeSub(context, z);
+    return this.decodeSub(context, z);
+  };
+
+  this.nextByte = function (char) {
+    if(bytesLeft === 0 || this.ptr + 1 === this.data.length) {
+      return false;
+    }
+    char = this.data[this.ptr++];
+    --bytesLeft;
+    return true;
+  };
+
+  this.open = function () {
+    if (!this.nextByte(byte)) {
+      byte = 0xff;
+    }
+    code = byte << 8;
+    if (!this.nextByte(byte)) {
+      byte = 0xff;
+    }
+    code = code | byte;
+    delay = 25;
+    scount = 0;
+    this.preload();
+
+    fence = code;
+    if (code >= 0x8000) {
+      fence = 0x7fff;
+    }
+  };
+
+  this.preload = function () {
+    while (scount <= 24) {
+      if (!this.nextByte(byte)) {
+        byte = 0xff;
+        delay--;
+        assert(delay);
+      }
+      buffer = (buffer << 8) | byte;
+      scount += 8;
+    }
   };
   this.decodeWithNumContext = function (context) {
     var negative = false;
@@ -231,6 +271,7 @@ var ZPDecoder = function (input) {
       decision = low >= cutoff || (high >= cutoff && this.decodeWithBit(context.nodes[currentNode]));
 
       currentNode = decision ? context.getRight(currentNode) : context.getLeft (currentNode);
+      console.log('cn: ' + phase);
 
       switch (phase) {
         case 1:
@@ -267,66 +308,10 @@ var ZPDecoder = function (input) {
           break;
       }
     }
-    return negative ? -cutoff-1 : cutoff;
+    return negative ? -cutoff - 1 : cutoff;
   };
 
-  this.ptr = 0;
-
-  // private:
-  var a;
-  var code;
-  var fence;
-  var buffer;
-  var byte;
-  var scount;
-  var delay;
-  var bytesLeft;
-
-  function nextByte(char) {
-    if(bytesLeft === 0 || this.ptr + 1 === this.data.length) {
-      return false;
-    }
-    char = this.data[this.ptr++];
-    --bytesLeft;
-    return true;
-  }
-
-  function open() {
-    if (!nextByte(byte)) {
-      byte = 0xff;
-    }
-    code = byte << 8;
-    if (!nextByte(byte)) {
-      byte = 0xff;
-    }
-    code = code | byte;
-    delay = 25;
-    scount = 0;
-    preload();
-
-    fence = code;
-    if (code >= 0x8000) {
-      fence = 0x7fff;
-    }
-  }
-
-  function preload() {
-    while (scount <= 24) {
-      if (!nextByte(byte)) {
-        byte = 0xff;
-        delay--;
-        assert(delay);
-      }
-      buffer = (buffer << 8) | byte;
-      scount += 8;
-    }
-  }
-
-  function ffz(value) {
-    return value >= 0xff00 ? ZP_FFZ_table[value & 0xff] + 8 : ZP_FFZ_table[(value >> 8) & 0xff];
-  }
-
-  function decodeSub(context, z) {
+  this.decodeSub = function (context, z) {
     var bit = context & 1;
 
     if (z > code)
@@ -342,7 +327,7 @@ var ZPDecoder = function (input) {
       a = (a << shift);
       code = (code << shift) | ((buffer >> scount) & ((1 << shift) - 1));
       if (scount < 16) {
-        preload();
+        this.preload();
       }
 
       fence = code;
@@ -358,7 +343,7 @@ var ZPDecoder = function (input) {
       a = z << 1;
       code = (code << 1) | ((buffer >> scount) & 1);
       if (scount < 16) {
-        preload();
+        this.preload();
       }
 
       fence = code;
@@ -367,6 +352,60 @@ var ZPDecoder = function (input) {
       }
       return bit;
     }
+  };
+
+  this.nextByte = function (char) {
+    if(bytesLeft === 0 || this.ptr + 1 === this.data.length) {
+      return false;
+    }
+    char = this.data[this.ptr++];
+    --bytesLeft;
+    return true;
+  };
+
+  this.open = function () {
+    if (!this.nextByte(byte)) {
+      byte = 0xff;
+    }
+    code = byte << 8;
+    if (!this.nextByte(byte)) {
+      byte = 0xff;
+    }
+    code = code | byte;
+    delay = 25;
+    scount = 0;
+    this.preload();
+
+    fence = code;
+    if (code >= 0x8000) {
+      fence = 0x7fff;
+    }
+  };
+
+  this.preload = function () {
+    while (scount <= 24) {
+      if (!this.nextByte(byte)) {
+        byte = 0xff;
+        delay--;
+        assert(delay);
+      }
+      buffer = (buffer << 8) | byte;
+      scount += 8;
+    }
+  };
+
+  // private:
+  var a = 0;
+  var code;
+  var fence = 0;
+  var buffer;
+  var byte;
+  var scount;
+  var delay;
+  var bytesLeft = this.data.length;
+
+  function ffz(value) {
+    return value >= 0xff00 ? ZP_FFZ_table[value & 0xff] + 8 : ZP_FFZ_table[(value >> 8) & 0xff];
   }
 };
 
@@ -494,6 +533,7 @@ initTables();
 //
 //
 //
+/*
 function main(page) {
   logger.log('worker started');
   var renderer = new Renderer(config, function () {
@@ -520,3 +560,4 @@ var config = {
 };
 
 document.ready = main;
+*/

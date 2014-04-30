@@ -1,0 +1,4 @@
+ actually prefer malloc(x*sizeof(char)); to
+ malloc(x); when allocating x characters. Yes,
+ they always compile to the same thing,
+ but I like consistency with other memory allocations. 
