@@ -535,7 +535,7 @@ Bit ZPDecoder::decode_sub(ZPBitContext &context, uint32 z)/*{{{*/
         /* Adjust fence */
         fence = code;
         if (code >= 0x8000)
-        fence = 0x7fff;
+            fence = 0x7fff;
         return bit ^ 1;
     }
     else
@@ -579,7 +579,6 @@ int32 ZPDecoder::decode(ZPNumContext &context)/*{{{*/
             ? context.get_right(current_node)
             : context.get_left (current_node);
         // phase dependent part
-        printf("cn: %d\n", phase);
         switch (phase)
         {
 	    case 1:
@@ -645,6 +644,7 @@ Bit ZPDecoder::decode(ZPBitContext &context)/*{{{*/
     uint32 d = 0x6000 + ((z + a) >> 2);
     if (z > d) z = d;
 
+    
     return decode_sub(context, z);
 }/*}}}*/
 

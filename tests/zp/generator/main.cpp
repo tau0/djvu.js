@@ -1,7 +1,7 @@
 #include "stdio.h"
 #include "zp.h"
 int main() {
-    ZPNumContext ctx(0, 256);
+    ZPNumContext ctx(-1256, 1256);
     FILE * fin = fopen("input.txt", "r");
     FILE * fout = fopen("out.txt", "w");
     char c = ' ';
@@ -14,7 +14,7 @@ int main() {
 
 
     printf("decoding..........\n");
-    ZPNumContext ctx1(0, 256);
+    ZPNumContext ctx1(-1256, 1256);
     fout = fopen("input.txt", "r");
     fin = fopen("out.txt", "r");
     c = ' ';
@@ -25,7 +25,7 @@ int main() {
     ZPDecoder zp1(fin, sz);
     char ans[1000];
     int j = 0;
-    for (int i = 0; i < sz; ++i) {
+    for (int i = 0; i < sz - 2; ++i) {
         ans[j++] = zp1.decode(ctx1);
     }
     ans[j] = '\0';

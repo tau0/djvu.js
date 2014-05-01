@@ -15,12 +15,11 @@ fs.readFile('./generator/out.txt', function (err,data) {
   ans = "";
   for (var i in buffer)
     ans += String.fromCharCode(data[i]);
-  var ctx = new ZPNumContext(0, 20);
+  var ctx = new ZPNumContext(-1256, 1256);
   var zp = new ZPDecoder({ data: buffer});
   var ss = '';
-  console.log(buffer.byteLength);
-  for (var j = 0; j < 187; ++j) {
-    ss += zp.decodeWithNumContext(ctx) + ' ';
+  for (var j = 0; j < 752; ++j) {
+    ss += String.fromCharCode(zp.decodeWithNumContext(ctx));
   }
   console.log(ss);
 });

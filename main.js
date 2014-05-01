@@ -138,7 +138,7 @@ var ZPNumContext = function (amin, amax) {
   var right = [];
 
   this.newNode = function () {
-    this.nodes[n] = 0;
+    this.nodes[n] = { value: 0 };
     left[n] = 0;
     right[n] = 0;
     return n++;
@@ -176,7 +176,7 @@ var ZPNumContext = function (amin, amax) {
 
   this.init = function () {
     n = 1;
-    this.nodes[0] = 0;
+    this.nodes[0] = { value: 0 };
     left[0] = right[0] = 0;
   };
 
@@ -205,10 +205,10 @@ var ZPDecoder = function (input) {
   };
 
   this.decodeWithBit = function (context) {
-    var z = a + ZP_p_table[context];
+    var z = a + ZP_p_table[context.value];
     if (z <= fence) {
       a = z;
-      return context & 1;
+      return context.value & 1;
     }
     var d = 0x6000 + ((z + a) >> 2);
     if (z > d) {
@@ -217,23 +217,31 @@ var ZPDecoder = function (input) {
     return this.decodeSub(context, z);
   };
 
-  this.nextByte = function (char) {
+  this.nextByte = function () {
     if(bytesLeft === 0 || this.ptr + 1 === this.data.length) {
-      return false;
+      throw {};
     }
     char = this.data[this.ptr++];
     --bytesLeft;
-    return true;
+    return char;
   };
 
   this.open = function () {
-    if (!this.nextByte(byte)) {
+
+    try {
+      byte = this.nextByte();
+    } catch (e) {
       byte = 0xff;
     }
+
+
     code = byte << 8;
-    if (!this.nextByte(byte)) {
+    try {
+      byte = this.nextByte();
+    } catch (e) {
       byte = 0xff;
     }
+
     code = code | byte;
     delay = 25;
     scount = 0;
@@ -247,16 +255,20 @@ var ZPDecoder = function (input) {
 
   this.preload = function () {
     while (scount <= 24) {
-      if (!this.nextByte(byte)) {
+      try {
+        byte = this.nextByte();
+      } catch(e) {
         byte = 0xff;
         delay--;
         assert(delay);
       }
+
       buffer = (buffer << 8) | byte;
       scount += 8;
     }
   };
   this.decodeWithNumContext = function (context) {
+
     var negative = false;
     var cutoff = 0;
     var range = 0xFFFFFFFF;
@@ -268,11 +280,11 @@ var ZPDecoder = function (input) {
     while(range != 1)
     {
       var decision;
+
       decision = low >= cutoff || (high >= cutoff && this.decodeWithBit(context.nodes[currentNode]));
-
       currentNode = decision ? context.getRight(currentNode) : context.getLeft (currentNode);
-      console.log('cn: ' + phase);
 
+      console.log("FR ", phase, range, decision, cutoff);
       switch (phase) {
         case 1:
           negative = !decision;
@@ -281,7 +293,8 @@ var ZPDecoder = function (input) {
               low = - high - 1;
               high = temp;
           }
-          phase = 2; cutoff = 1;
+          phase = 2;
+          cutoff = 1;
           break;
         case 2:
           if (!decision) {
@@ -312,7 +325,7 @@ var ZPDecoder = function (input) {
   };
 
   this.decodeSub = function (context, z) {
-    var bit = context & 1;
+    var bit = context.value & 1;
 
     if (z > code)
     {
@@ -320,12 +333,12 @@ var ZPDecoder = function (input) {
       a += z;
       code = code + z;
 
-      context = ZP_dn_table[context];
+      context.value = ZP_dn_table[context.value];
 
       var shift = ffz(a);
       scount -= shift;
-      a = (a << shift);
-      code = (code << shift) | ((buffer >> scount) & ((1 << shift) - 1));
+      a = (a << shift) % 65536;
+      code = ((code << shift) | ((buffer >> scount) & ((1 << shift) - 1))) % 65536;
       if (scount < 16) {
         this.preload();
       }
@@ -336,12 +349,12 @@ var ZPDecoder = function (input) {
       }
       return bit ^ 1;
     } else {
-      if (a >= ZP_m_table[context])
-        context = ZP_up_table[context];
+      if (a >= ZP_m_table[context.value])
+        context.value = ZP_up_table[context.value];
 
       scount -= 1;
-      a = z << 1;
-      code = (code << 1) | ((buffer >> scount) & 1);
+      a = (z << 1) % 65536;
+      code = ((code << 1) | ((buffer >> scount) & 1)) % 65536;
       if (scount < 16) {
         this.preload();
       }
@@ -354,45 +367,7 @@ var ZPDecoder = function (input) {
     }
   };
 
-  this.nextByte = function (char) {
-    if(bytesLeft === 0 || this.ptr + 1 === this.data.length) {
-      return false;
-    }
-    char = this.data[this.ptr++];
-    --bytesLeft;
-    return true;
-  };
 
-  this.open = function () {
-    if (!this.nextByte(byte)) {
-      byte = 0xff;
-    }
-    code = byte << 8;
-    if (!this.nextByte(byte)) {
-      byte = 0xff;
-    }
-    code = code | byte;
-    delay = 25;
-    scount = 0;
-    this.preload();
-
-    fence = code;
-    if (code >= 0x8000) {
-      fence = 0x7fff;
-    }
-  };
-
-  this.preload = function () {
-    while (scount <= 24) {
-      if (!this.nextByte(byte)) {
-        byte = 0xff;
-        delay--;
-        assert(delay);
-      }
-      buffer = (buffer << 8) | byte;
-      scount += 8;
-    }
-  };
 
   // private:
   var a = 0;
@@ -407,6 +382,8 @@ var ZPDecoder = function (input) {
   function ffz(value) {
     return value >= 0xff00 ? ZP_FFZ_table[value & 0xff] + 8 : ZP_FFZ_table[(value >> 8) & 0xff];
   }
+
+  this.open();
 };
 
 // Errors
