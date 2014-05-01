@@ -3,7 +3,7 @@
 int main() {
     ZPNumContext ctx(-1256, 1256);
     FILE * fin = fopen("input.txt", "r");
-    FILE * fout = fopen("out.txt", "w");
+    FILE * fout = fopen("out.bin", "w");
     char c = ' ';
     ZPEncoder zp(fout);
     while ((c = fgetc(fin)) && c != EOF) {
@@ -16,7 +16,7 @@ int main() {
     printf("decoding..........\n");
     ZPNumContext ctx1(-1256, 1256);
     fout = fopen("input.txt", "r");
-    fin = fopen("out.txt", "r");
+    fin = fopen("out.bin", "r");
     c = ' ';
     fseek(fout, 0L, SEEK_END);
     int sz = ftell(fout);

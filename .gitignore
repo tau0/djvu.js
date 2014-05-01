@@ -1,7 +1,8 @@
 # Logs
 logs
 *.log
-
+*.bin
+a.out
 # Runtime data
 pids
 *.pid
