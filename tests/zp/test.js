@@ -1,5 +1,7 @@
+var buster = require('buster');
+var rjs = require('requirejs');
+var zpcoder = rjs('../../zpcoder');
 var fs = require('fs');
-eval(fs.readFileSync('../../main.js') + '');
 
 function toArrayBuffer(buffer) {
     var ab = new ArrayBuffer(buffer.length);
@@ -10,16 +12,23 @@ function toArrayBuffer(buffer) {
     return view;
 }
 
-fs.readFile('./generator/out.txt', function (err,data) {
-  buffer = toArrayBuffer(data);
-  ans = "";
-  for (var i in buffer)
-    ans += String.fromCharCode(data[i]);
-  var ctx = new ZPNumContext(-1256, 1256);
-  var zp = new ZPDecoder({ data: buffer});
+fs.readFile('./generator/out.bin', function (err, out) {
+  buffer = toArrayBuffer(out);
+  console.log(buffer.length);
+  var ctx = new zpcoder.ZPNumContext(-1256, 1256);
+  
   var ss = '';
-  for (var j = 0; j < 752; ++j) {
-    ss += String.fromCharCode(zp.decodeWithNumContext(ctx));
-  }
-  console.log(ss);
+  fs.readFile('./generator/answer.txt', function (err, answer) {
+    fs.readFile('./generator/input.txt', function (err, data) {
+      var zp = new zpcoder.ZPDecoder({ data: buffer, length: data.length});
+      var sp = 0;
+      buster.testCase('integration test', {
+        'input': function () {
+            for (var j = 0; j < data.length; ++j) {
+              buster.assert.equals(answer[sp++], zp.decodeWithNumContext(ctx));
+            }
+        }
+      });
+    });
+  });
 });

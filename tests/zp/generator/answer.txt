@@ -25,4 +25,4 @@ The following example uses slice to create a new string.
 var str1 = "The morning is upon us.";
 var str2 = str1.slice(4, -2);
 
-alert(str2); // OUTPUT: morning is upon u
+alert(str2); // OUTPUT: morning is uruolty
