@@ -10,8 +10,16 @@ define(function () {
       throw error.assertError;
     }
   }
+
+  function log() {
+    if (DEBUG) {
+      console.log.apply(console, arguments);
+    }
+  }
+
   return {
     assert: assert,
-    clearArray: clearArray
+    clearArray: clearArray,
+    log: log
   };
 });
