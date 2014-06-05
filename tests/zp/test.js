@@ -12,6 +12,9 @@ function toArrayBuffer(buffer) {
 }
 
 fs.readFile(__dirname + '/generator/out.bin', function (err, out) {
+  if (err) {
+  	console.log("can't find binary output, create one with run.sh in generator folder");
+  }
   buffer = toArrayBuffer(out);
   var ctx = new zpcoder.ZPNumContext(-1256, 1256);
 
