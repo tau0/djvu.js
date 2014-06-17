@@ -1,0 +1,33 @@
+{
+  "name": "DJVU.js",
+  "version": "0.0.1",
+  "description": "DJVU reader written fully in javascript",
+  "main": "main.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "grunt test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/saint3k/djvu.js.git"
+  },
+  "keywords": [
+    "djvu",
+    "js",
+    "reader"
+  ],
+  "author": "Nikolay Sukhanov",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/saint3k/djvu.js/issues"
+  },
+  "homepage": "https://github.com/saint3k/djvu.js",
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-contrib-concat": "^0.4.0",
+    "grunt-contrib-jshint": "^0.10.0",
+    "grunt-mocha-test": "^0.11.0",
+  }
+}

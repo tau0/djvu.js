@@ -1,10 +1,75 @@
+"use strict";
+var error = {
+  incorrectInput: 'Incorrect input',
+  assertError: 'Assert error'
+};
+
+var JB2Decoder = function () {
+  this.imageSize = new ZPNumContext(0, 10);
+  this.matchingSymbolIndex = new ZPNumContext(0, 0);
+  this.symbolColumnNumver = new ZPNumContext(0, 0);
+  this.symbolRowNumber = new ZPNumContext(0, 0);
+  this.sameLineColumnOffset = new ZPNumContext(0, 0);
+  this.sameLineRowOffset = new ZPNumContext(0, 0);
+  this.newLineColumnOffset = new ZPNumContext(0, 0);
+  this.newLineRowOffset = new ZPNumContext(0, 0);
+  this.commentLength = new ZPNumContext(0, 0);
+  this.commentOctet = new ZPNumContext(0, 0);
+  this.requiredDictionaySize = new ZPNumContext(0, 0);
+  this.recordType = new ZPNumContext(0, 0);
+  this.first = new JB2Rect(-1, 0, 0, 1);
+  this.lineCounter = 0;
+
+  this.reset = function () {
+    this.recordType.reset();
+    this.imageSize.reset();
+    this.matchingSymbolIndex.reset();
+    this.symbolColumnNumver.reset();
+    this.symbolRowNumber.reset();
+    this.sameLineRowOffset.reset();
+    this.sameLineColumnOffset.reset();
+    this.newLineRowOffset.reset();
+    this.newLineColumnOffset.reset();
+    this.commentOctet.reset();
+    this.commentLength.reset();
+    this.requiredDictionaySize.reset();
+  };
+};
+
+var JB2Rect = function (left, top, width, height) {
+  this.left = left;
+  this.top = top;
+  this.width = top;
+  this.height = height;
+};
+
+
+var lib = {
+  clearArray: function(array) {
+    while (array.length > 0) {
+        array.shift();
+    }
+  },
+  assert: function(value) {
+    if (!value) {
+      throw error.assertError;
+    }
+  },
+  log: function() {
+    if (DEBUG) {
+      console.log.apply(console, arguments);
+    }
+  }
+};
+
+
 // ================================ Fetcher ======================================================
 //
 //
 //
-var Fetcher = function (config, callback) {
+var Fetcher = function (config, manifest) {
   this.downloadPage = function (pageNumber, callback) {
-    logger.log('loading page: ' + pageNumber + 'from' + this.manifest.files.length);
+    lib.log('loading page: ' + pageNumber + 'from' + this.manifest.files.length);
 
     var left = parseInt(this.manifest.files[pageNumber].offset);
     var size = parseInt(this.manifest.files[pageNumber].size);
@@ -22,18 +87,14 @@ var Fetcher = function (config, callback) {
     filePreload.send();
   };
 
-  $.getJSON(config.url + '.json', function(data) {
-    this.manifest = data;
-    logger.log('there are ' + data.files.length + ' pages');
-    callback();
-  }.bind(this));
+  this.manifest = manifest;
 };
 
 // ============================= Renderer ========================================================
 //
 //
 //
-var Renderer = function (config, callback) {
+var Renderer = function (config, manifest) {
   this.getc = function () {
     return this.data[this.pointer++];
   };
@@ -96,24 +157,43 @@ var Renderer = function (config, callback) {
   this.loadJB2 = function () {};
 
   this.render = function (target, pageNumber) {
-    logger.log(this.fetcher);
+    lib.log(this.fetcher);
     this.fetcher.downloadPage(pageNumber, function (binaryData) {
       this.pointer = 0;
       this.data = binaryData;
       var length = this.locateJB2Chunk();
-      logger.log(length);
+      lib.log(length);
       return this.loadJB2(length);
     }.bind(this));
   };
 
-  this.fetcher = new Fetcher(config, function () {
-    callback();
-  });
+  this.fetcher = new Fetcher(config, manifest);
 };
+// Library
+// ============================================================================================
+// Constants region:
+// // ============================================================================================
+
+var CHUNK_ID_FORM = 0x464F524D;
+var CHUNK_ID_Sjbz = 0x536A627A;
+var ID_DJVU = 0x444A5655;
+
+// ==============================================================================================
+
+// ========================================== main ==========================================
+//
+//
+//
+//
+/*
+*/
+
+/* global error: false, lib: false */
 // ========================================= ZPNumContext =======================================
 //
 //
 //
+
 var ZPNumContext = function (amin, amax) {
   this.setInterval = function (newMin, newMax) {
     if (newMin > newMax) {
@@ -125,10 +205,10 @@ var ZPNumContext = function (amin, amax) {
   };
 
   this.reset = function () {
-    clearArray(this.nodes);
-    clearArray(left);
-    clearArray(right);
-    init();
+    lib.clearArray(this.nodes);
+    lib.clearArray(left);
+    lib.clearArray(right);
+    lib.init();
   };
 
   this.nodes = [];
@@ -188,12 +268,11 @@ var ZPNumContext = function (amin, amax) {
   this.max = amax;
   this.init();
 };
+
 // ============================= ZPCoder =======================================================
 //
 //
 //
-
-
 var ZPDecoder = function (input) {
   // public:
   this.data = input.data || null;
@@ -218,31 +297,29 @@ var ZPDecoder = function (input) {
   };
 
   this.nextByte = function () {
-    if(bytesLeft === 0 || this.ptr + 1 === this.data.length) {
-      throw {};
+    if(bytesLeft === 0 || this.ptr === this.data.length) {
+      throw 'no data';
     }
-    char = this.data[this.ptr++];
+    var c = this.data[this.ptr++];
     --bytesLeft;
-    return char;
+    return c;
   };
 
   this.open = function () {
-
     try {
       byte = this.nextByte();
     } catch (e) {
       byte = 0xff;
     }
-
-
     code = byte << 8;
+
     try {
       byte = this.nextByte();
     } catch (e) {
       byte = 0xff;
     }
-
     code = code | byte;
+
     delay = 25;
     scount = 0;
     this.preload();
@@ -260,15 +337,15 @@ var ZPDecoder = function (input) {
       } catch(e) {
         byte = 0xff;
         delay--;
-        assert(delay);
+        lib.assert(delay);
       }
 
       buffer = (buffer << 8) | byte;
       scount += 8;
     }
   };
-  this.decodeWithNumContext = function (context) {
 
+  this.decodeWithNumContext = function (context) {
     var negative = false;
     var cutoff = 0;
     var range = 0xFFFFFFFF;
@@ -284,7 +361,6 @@ var ZPDecoder = function (input) {
       decision = low >= cutoff || (high >= cutoff && this.decodeWithBit(context.nodes[currentNode]));
       currentNode = decision ? context.getRight(currentNode) : context.getLeft (currentNode);
 
-      console.log("FR ", phase, range, decision, cutoff);
       switch (phase) {
         case 1:
           negative = !decision;
@@ -326,7 +402,6 @@ var ZPDecoder = function (input) {
 
   this.decodeSub = function (context, z) {
     var bit = context.value & 1;
-
     if (z > code)
     {
       z = 0x10000 - z;
@@ -377,7 +452,7 @@ var ZPDecoder = function (input) {
   var byte;
   var scount;
   var delay;
-  var bytesLeft = this.data.length;
+  var bytesLeft = input.length;
 
   function ffz(value) {
     return value >= 0xff00 ? ZP_FFZ_table[value & 0xff] + 8 : ZP_FFZ_table[(value >> 8) & 0xff];
@@ -386,16 +461,12 @@ var ZPDecoder = function (input) {
   this.open();
 };
 
-// Errors
-// =============================================================================================
 
-var error = {
-  incorrectInput: 'Incorrect input',
-  assertError: 'Assert error'
-};
+//====================================== Tables ==============================================
+//
+//
+//
 
-// Library
-// ============================================================================================
 function initTables() {
   for (var i = 0; i < 256; i++) {
     if (ZP_m_table[i] == 0xFFFF) {
@@ -415,24 +486,6 @@ function initFfzTable() {
     }
   }
 }
-
-function clearArray(array) {
-  while (array.length > 0) {
-      array.shift();
-  }
-}
-
-function assert(value) {
-  if (!value) {
-    throw error.assertError;
-  }
-}
-// Constants region:
-// // ============================================================================================
-
-var CHUNK_ID_FORM = 0x464F524D;
-var CHUNK_ID_Sjbz = 0x536A627A;
-var ID_DJVU = 0x444A5655;
 
 var ZP_FFZ_table = [];
 
@@ -503,38 +556,4 @@ var ZP_dn_table = [
 
 initFfzTable();
 initTables();
-// ==============================================================================================
 
-// ========================================== main ==========================================
-//
-//
-//
-//
-/*
-function main(page) {
-  logger.log('worker started');
-  var renderer = new Renderer(config, function () {
-    renderer.render('test', 0);
-    logger.log('render is ready');
-  });
-}
-
-var js = document.createElement('script');
-js.type = 'text/javascript';
-js.src = 'http://code.jquery.com/jquery-2.1.0.min.js';
-document.body.appendChild(js);
-
-var DEBUG = true;
-var logger = logger || {};
-logger.log = function () {
-  if (DEBUG) {
-    console.log.apply(console, arguments);
-  }
-};
-
-var config = {
-  url: 'http://178.63.105.73/test/aHR0cDovL2xpYmdlbi5vcmcvZ2V0P25hbWV0eXBlPW9yaWcmbWQ1PTAwMDAwOWRhNThkMmIwMzUxOTM0OTZhOTg2MTU2MWM0',
-};
-
-document.ready = main;
-*/

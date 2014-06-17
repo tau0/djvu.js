@@ -6,7 +6,8 @@ int main() {
     FILE * fout = fopen("out.bin", "w");
     char c = ' ';
     ZPEncoder zp(fout);
-    while ((c = fgetc(fin)) && c != EOF) {
+    while ((c = fgetc(fin)) != EOF) {
+        printf("%d ", c);
         zp.encode(c, ctx);
     }
     fclose(fin);
@@ -17,20 +18,18 @@ int main() {
     ZPNumContext ctx1(-1256, 1256);
     fout = fopen("input.txt", "r");
     fin = fopen("out.bin", "r");
+    FILE * fans = fopen("answer.txt", "w");
     c = ' ';
     fseek(fout, 0L, SEEK_END);
     int sz = ftell(fout);
     fseek(fout, 0L, SEEK_SET);
-    printf("size: %d\n", sz);
     ZPDecoder zp1(fin, sz);
     char ans[1000];
     int j = 0;
-    for (int i = 0; i < sz - 2; ++i) {
-        ans[j++] = zp1.decode(ctx1);
+    for (int i = 0; i < sz; ++i) {
+        fprintf(fans, "%c", zp1.decode(ctx1));
     }
-    ans[j] = '\0';
-    printf("\n");
-    printf("%s", ans);
+    fclose(fans);
     fclose(fin);
 
     return 0;

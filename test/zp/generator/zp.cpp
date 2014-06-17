@@ -456,9 +456,13 @@ void ZPEncoder::encode(Bit bit, ZPBitContext &context) /*{{{*/
 
 inline bool ZPDecoder::next_byte(unsigned char &b)/*{{{*/
 {
-    if (!bytes_left) return false;
+    if (!bytes_left) {
+        return false;
+    }
     int c = fgetc(file);
-    if (c == EOF) return false;
+    if (c == EOF) {
+        return false;
+    }
     bytes_left--;
     b = c;
     return true;
@@ -530,8 +534,9 @@ Bit ZPDecoder::decode_sub(ZPBitContext &context, uint32 z)/*{{{*/
         a = (unsigned short) (a << shift);
         code = (unsigned short) (code << shift) |
                 ((buffer >> scount) & ((1 << shift) - 1));
-        if (scount<16) preload();
-
+        if (scount<16) {
+            preload();
+        }   
         /* Adjust fence */
         fence = code;
         if (code >= 0x8000)
@@ -548,7 +553,9 @@ Bit ZPDecoder::decode_sub(ZPBitContext &context, uint32 z)/*{{{*/
         scount -= 1;
         a = (unsigned short)(z<<1);
         code = (unsigned short)(code<<1) | ((buffer>>scount) & 1);
-        if (scount<16) preload();
+        if (scount<16) {
+            preload();
+        }
 
         /* Adjust fence */
         fence = code;
