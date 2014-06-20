@@ -87,19 +87,33 @@ var Renderer = function (config, manifest) {
     this.skipInChunk(FORM, 4);
     this.getChildChunk(Sjbz, FORM);
     this.findSiblingChunk(Sjbz, CHUNK_ID_Sjbz);
-    return Sjbz.length;
+    return Sjbz;
   };
 
-  this.loadJB2 = function () {};
+  this.loadJB2 = function (chunkInfo) {
+    var jb2 = new JB2Decoder({
+      getter: this.getc,
+      data: this.data,
+      ptr: this.pointer
+    });
+    var zp = jb2.zp;
+
+    lib.log(jb2.decodeRecordType());
+    lib.log("h: " + zp.decodeWithNumContext(jb2.imageSize));
+    lib.log("w: " + zp.decodeWithNumContext(jb2.imageSize));
+    lib.log("----------------------------------------------");
+    lib.log("d: " + zp.decodeWithBit(jb2.eventualImageRefinement));
+    lib.log(jb2.decodeRecordType());
+  };
 
   this.render = function (target, pageNumber) {
     lib.log(this.fetcher);
     this.fetcher.downloadPage(pageNumber, function (binaryData) {
       this.pointer = 0;
       this.data = binaryData;
-      var length = this.locateJB2Chunk();
-      lib.log(length);
-      return this.loadJB2(length);
+      var jb2chunk = this.locateJB2Chunk();
+      lib.log(jb2chunk.length);
+      return this.loadJB2(jb2chunk);
     }.bind(this));
   };
 

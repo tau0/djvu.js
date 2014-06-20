@@ -86,7 +86,7 @@ var ZPNumContext = function (amin, amax) {
 var ZPDecoder = function (input) {
   // public:
   this.data = input.data || null;
-  this.ptr = 0;
+  this.ptr = input.ptr || 0;
 
   this.decodeWithoutContext = function () {
     var dummy = 0;
