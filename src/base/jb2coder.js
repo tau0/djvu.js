@@ -2,6 +2,8 @@ var JB2Decoder = function (config) {
   this.imageSize = new ZPNumContext(0, 262142);
   this.recordType = new ZPNumContext(0, 11);
   this.eventualImageRefinement = { value: 0 };
+  this.symbolColumnNumber = new ZPNumContext(0, 0);
+  this.symbolRowNumber= new ZPNumContext(0, 0);
 
   this.reset = function () {
   };

@@ -90,6 +90,21 @@ var Renderer = function (config, manifest) {
     return Sjbz;
   };
 
+  this.records = {
+    jb2_start_of_image: 0,
+    jb2_new_symbol_add_to_image_and_library: 1,
+    jb2_new_symbol_add_to_library_only: 2,
+    jb2_new_symbol_add_to_image_only: 3,
+    jb2_matched_symbol_with_refinement_add_to_image_and_library: 4,
+    jb2_matched_symbol_with_refinement_add_to_library_only: 5,
+    jb2_matched_symbol_with_refinement_add_to_image_only: 6,
+    jb2_matched_symbol_copy_to_image_without_refinement: 7,
+    jb2_non_symbol_data: 8,
+    jb2_require_dictionary_or_reset: 9,
+    jb2_comment: 10,
+    jb2_end_of_data: 11
+  };
+
   this.loadJB2 = function (chunkInfo) {
     var jb2 = new JB2Decoder({
       getter: this.getc,
@@ -98,12 +113,38 @@ var Renderer = function (config, manifest) {
     });
     var zp = jb2.zp;
 
-    lib.log(jb2.decodeRecordType());
-    lib.log("h: " + zp.decodeWithNumContext(jb2.imageSize));
-    lib.log("w: " + zp.decodeWithNumContext(jb2.imageSize));
-    lib.log("----------------------------------------------");
-    lib.log("d: " + zp.decodeWithBit(jb2.eventualImageRefinement));
-    lib.log(jb2.decodeRecordType());
+    var record = jb2.decodeRecordType();
+    var dictionary = 0;
+
+    if (record == this.records.jb2_require_dictionary_or_reset) {
+      dictionary = zp.decode(jb2.requredDictionarySize);
+      record = jb2.decodeRecordType();
+    }
+
+    if (record != this.records.jb2_start_of_image) {
+      throw "Something wrong with first record in jb2 chunk";
+    }
+
+    var width = zp.decodeWithNumContext(jb2.imageSize);
+    var height = zp.decodeWithNumContext(jb2.imageSize);
+    zp.decodeWithBit(jb2.eventualImageRefinement); // TODO: WTF? And why it's here?
+    jb2.symbolColumnNumber.setInterval(1, width);
+    jb2.symbolRowNumber.setInterval(1, height);
+
+    lib.log("first record valid, image h; " + height + ", width: " + width);
+
+    var libCount = 0;
+
+    while(true) {
+      record = jb2.decodeRecordType();
+      switch(record) {
+        case this.records.jb2_new_symbol_add_to_image_and_library:
+          lib.log("jb2_new_symbol_add_to_image_and_library");
+        break;
+        default:
+          throw "Record not defined here: " + record;
+      }
+    }
   };
 
   this.render = function (target, pageNumber) {
