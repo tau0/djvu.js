@@ -31,6 +31,7 @@ var Fetcher = function (config, manifest) {
 //
 //
 var Renderer = function (config, manifest) {
+  this.canvas = config.canvas || null;
   this.getc = function () {
     return this.data[this.pointer++];
   };
@@ -127,21 +128,42 @@ var Renderer = function (config, manifest) {
 
     var width = zp.decodeWithNumContext(jb2.imageSize);
     var height = zp.decodeWithNumContext(jb2.imageSize);
-    zp.decodeWithBit(jb2.eventualImageRefinement); // TODO: WTF? And why it's here?
+    zp.decodeWithBitContext(jb2.eventualImageRefinement); // TODO: WTF? And why it's here?
     jb2.symbolColumnNumber.setInterval(1, width);
     jb2.symbolRowNumber.setInterval(1, height);
 
     lib.log("first record valid, image h; " + height + ", width: " + width);
+    this.canvas.resize({ width: width, height: height });
 
     var libCount = 0;
+    var q = 0; //TODO rm me
 
     while(true) {
+      if (q == 34) {
+        this.canvas.render();
+        break;
+      }
       record = jb2.decodeRecordType();
       switch(record) {
         case this.records.jb2_new_symbol_add_to_image_and_library:
           lib.log("jb2_new_symbol_add_to_image_and_library");
+          var symbol = new Symbol({ jb2 : jb2 });
+          symbol.decodeDirectSymbol();
+          var position = jb2.decodeSymbolPosition({
+            width : symbol.getWidth(),
+            height : symbol.getHeight()
+          });
+          lib.log("symbol: " + q++);
+          for (var x = 0; x < symbol.getWidth(); ++x) {
+            for (var y = 0; y < symbol.getHeight(); ++y) {
+              if (symbol.getPixel(x, y)) {
+                this.canvas.put(x + position.x, y + position.y);
+              }
+            }
+          }
         break;
         default:
+          this.canvas.render();
           throw "Record not defined here: " + record;
       }
     }

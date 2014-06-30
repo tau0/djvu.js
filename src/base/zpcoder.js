@@ -93,7 +93,7 @@ var ZPDecoder = function (input) {
     return this.decodeSub(dummy, 0x8000 + (a >> 1));
   };
 
-  this.decodeWithBit = function (context) {
+  this.decodeWithBitContext = function (context) {
     var z = a + ZP_p_table[context.value];
     if (z <= fence) {
       a = z;
@@ -168,7 +168,7 @@ var ZPDecoder = function (input) {
     {
       var decision;
 
-      decision = low >= cutoff || (high >= cutoff && this.decodeWithBit(context.nodes[currentNode]));
+      decision = low >= cutoff || (high >= cutoff && this.decodeWithBitContext(context.nodes[currentNode]));
       currentNode = decision ? context.getRight(currentNode) : context.getLeft (currentNode);
 
       switch (phase) {

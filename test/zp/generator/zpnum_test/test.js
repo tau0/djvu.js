@@ -6,7 +6,7 @@ var includeInThisContext = function(path) {
           vm.runInThisContext(code, path);
 }.bind(this);
 
-includeInThisContext(__dirname + "/../../build/base.js");
+includeInThisContext(__dirname + "/../../../../build/base.js");
 var assert = require('assert');
 function toArrayBuffer(buffer) {
     var ab = new ArrayBuffer(buffer.length);
@@ -17,9 +17,9 @@ function toArrayBuffer(buffer) {
     return view;
 }
 
-it('should works without assertions', function(done) {
-  fs.readFile(__dirname + '/generator/answer.txt', function (err, answer) {
-    fs.readFile(__dirname + '/generator/out.bin', function (err, out) {
+it('ZPNum decoding tests', function(done) {
+  fs.readFile(__dirname + '/answer.txt', function (err, answer) {
+    fs.readFile(__dirname + '/out.bin', function (err, out) {
       if (err) {
         console.log("can't find binary output, create one with run.sh in generator folder");
       }
@@ -27,7 +27,7 @@ it('should works without assertions', function(done) {
       var ctx = new ZPNumContext(-1256, 1256);
 
       var ss = '';
-      fs.readFile(__dirname + '/generator/input.txt', function (err, data) {
+      fs.readFile(__dirname + '/input.txt', function (err, data) {
         var zp = new ZPDecoder({ data: buffer, length: data.length});
         var sp = 0;
         for (var j = 0; j < data.length; ++j) {

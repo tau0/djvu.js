@@ -7,9 +7,9 @@ int main() {
     char c = ' ';
     ZPEncoder zp(fout);
     while ((c = fgetc(fin)) != EOF) {
-        printf("%d ", c);
         zp.encode(c, ctx);
     }
+    zp.close();
     fclose(fin);
     fclose(fout);
 
@@ -19,12 +19,14 @@ int main() {
     fout = fopen("input.txt", "r");
     fin = fopen("out.bin", "r");
     FILE * fans = fopen("answer.txt", "w");
-    c = ' ';
     fseek(fout, 0L, SEEK_END);
     int sz = ftell(fout);
     fseek(fout, 0L, SEEK_SET);
-    ZPDecoder zp1(fin, sz);
-    char ans[1000];
+
+    fseek(fin, 0L, SEEK_END);
+    int sz1 = ftell(fin);
+    fseek(fin, 0L, SEEK_SET);
+    ZPDecoder zp1(fin, sz1);
     int j = 0;
     for (int i = 0; i < sz; ++i) {
         fprintf(fans, "%c", zp1.decode(ctx1));

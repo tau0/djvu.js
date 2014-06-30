@@ -19,6 +19,11 @@ module.exports = function(grunt) {
         '-W097': false
       }
     },
+    shell: {
+      runsh: {
+        command: "./test/run.sh"
+      }
+    },
     mochaTest: {
       test: {
         src: ['test/**/*.js'],
@@ -33,8 +38,9 @@ module.exports = function(grunt) {
    grunt.loadNpmTasks('grunt-contrib-jshint');
    grunt.loadNpmTasks('grunt-contrib-concat');
    grunt.loadNpmTasks('grunt-mocha-test');
+   grunt.loadNpmTasks('grunt-shell');
 
   // Default task(s).
-  grunt.registerTask('default', ['concat', 'jshint', 'mochaTest']);
+  grunt.registerTask('default', ['concat', 'jshint', 'shell', 'mochaTest']);
 
 };

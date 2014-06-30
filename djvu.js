@@ -1,0 +1,1 @@
+/home/sadkov/djvu.js

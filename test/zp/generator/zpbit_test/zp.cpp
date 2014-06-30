@@ -203,6 +203,7 @@ ZPEncoder::ZPEncoder(FILE *f)/*{{{*/
 }/*}}}*/
 void ZPEncoder::close()/*{{{*/
 {
+    printf("ZPEncoder closed\n");
     /* adjust subend */
     if (subend > 0x8000)
         subend = 0x10000;
@@ -536,7 +537,7 @@ Bit ZPDecoder::decode_sub(ZPBitContext &context, uint32 z)/*{{{*/
                 ((buffer >> scount) & ((1 << shift) - 1));
         if (scount<16) {
             preload();
-        }   
+        }
         /* Adjust fence */
         fence = code;
         if (code >= 0x8000)
@@ -651,7 +652,7 @@ Bit ZPDecoder::decode(ZPBitContext &context)/*{{{*/
     uint32 d = 0x6000 + ((z + a) >> 2);
     if (z > d) z = d;
 
-    
+
     return decode_sub(context, z);
 }/*}}}*/
 
