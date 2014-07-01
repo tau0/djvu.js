@@ -179,7 +179,6 @@ var Renderer = function (config, manifest) {
           });
           symbol.crop();
           jb2.library.addSymbol(symbol);
-          alert(q);
         break;
         case this.records.jb2_matched_symbol_copy_to_image_without_refinement:
           lib.log("jb2_matched_symbol_copy_to_image_without_refinement");

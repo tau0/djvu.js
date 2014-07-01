@@ -86,7 +86,7 @@ var JB2Decoder = function (config) {
 };
 
 var Symbol = function (config) {
-  var data = [];
+  var data = new lib.bitArray(0);
   var jb2 = config.jb2 || null;
   var width;
   var height;
@@ -112,6 +112,7 @@ var Symbol = function (config) {
   this.decodeDirectSymbol = function () {
     width = jb2.zp.decodeWithNumContext(jb2.symbolWidth);
     height = jb2.zp.decodeWithNumContext(jb2.symbolHeight);
+    data.resize(width * height);
     lib.log(width, height);
 
     var dx = [-1, 0,  1,  -2, -1, 0,  1,  2,  -2, -1];
@@ -124,8 +125,8 @@ var Symbol = function (config) {
         for (var i = 9; i >= 0; --i) {
           context = context * 2 + this.getPixel(x + dx[i], y + dy[i]);
         }
-        data[y * width + x] = jb2.zp.decodeWithBitContext(jb2.symbolDirectContexts[context]);
-        s += data[y * width + x];
+        data.setBit(y * width + x, jb2.zp.decodeWithBitContext(jb2.symbolDirectContexts[context]));
+        s += data.getBit(y * width + x);
       }
       lib.log(y + ")" + s);
     }
@@ -134,6 +135,7 @@ var Symbol = function (config) {
   this.decodeRefinedSymbol = function (librarySymbol) {
     width = librarySymbol.getWidth() + jb2.zp.decodeWithNumContext(jb2.symbolWidthDifference);
     height = librarySymbol.getHeight() + jb2.zp.decodeWithNumContext(jb2.symbolHeightDifference);
+    data.resize(width * height);
     lib.log(width, height, librarySymbol.getWidth(), librarySymbol.getHeight());
 
     var dx = [-1, 0,  1,  -1,    0, -1, 0,  1,  -1, 0,  1];
@@ -155,8 +157,8 @@ var Symbol = function (config) {
           context *= 2;
           context += this.getPixel(x + dx[j], y + dy[j]);
         }
-        data[y * width + x] = jb2.zp.decodeWithBitContext(jb2.symbolRefinementContexts[context]);
-        s += data[y * width + x];
+        data.setBit(y * width + x, jb2.zp.decodeWithBitContext(jb2.symbolRefinementContexts[context]));
+        s += data.getBit(y * width + x);
       }
       lib.log(y + ")" + s);
     }
@@ -167,7 +169,7 @@ var Symbol = function (config) {
     if (x < 0 || y < 0 || x >= width || y >= height) {
       return 0;
     }
-    return data[y * width + x];
+    return data.getBit(y * width + x);
   };
 
   this.crop = function () {
@@ -222,10 +224,10 @@ var Symbol = function (config) {
     _height -= top;
     for (var y = 0; y < _height; ++y) {
       for (var x = 0; x < _width; ++x) {
-        data[y * _width + x] = this.getPixel(x + left, y + top);
+        data.setBit(y * _width + x, this.getPixel(x + left, y + top));
       }
     }
-    data.length = _width * _height;
+    data.resize(_width * _height);
     width = _width;
     height = _height;
   };
