@@ -139,6 +139,7 @@ var Renderer = function (config, manifest) {
     var q = 0; //TODO rm me
     var symbol = new Symbol({ jb2 : jb2 });
     var position;
+    var index;
 
     while(true) {
       if (q == 35) {
@@ -163,15 +164,34 @@ var Renderer = function (config, manifest) {
           symbol.crop();
           jb2.library.addSymbol(symbol);
         break;
+        case this.records.jb2_matched_symbol_with_refinement_add_to_image_and_library:
+          lib.log("jb2_matched_symbol_with_refinement_add_to_image_and_library");
+          jb2.matchingSymbolIndex.setInterval(0, jb2.library.getSize() - 1);
+          index = zp.decodeWithNumContext(jb2.matchingSymbolIndex);
+
+          symbol = new Symbol({ jb2 : jb2 });
+          symbol.decodeRefinedSymbol(jb2.library.getByIndex(index));
+          position = jb2.decodeSymbolPosition({
+            width : symbol.getWidth(),
+            height : symbol.getHeight()
+          });
+          lib.log("symbol: " + q++);
+          symbol.draw({
+            canvas: this.canvas,
+            position: position
+          });
+          symbol.crop();
+          jb2.library.addSymbol(symbol);
+        break;
         case this.records.jb2_matched_symbol_copy_to_image_without_refinement:
           lib.log("jb2_matched_symbol_copy_to_image_without_refinement");
           jb2.matchingSymbolIndex.setInterval(0, jb2.library.getSize() - 1);
-          var index = zp.decodeWithNumContext(jb2.matchingSymbolIndex);
+          index = zp.decodeWithNumContext(jb2.matchingSymbolIndex);
           symbol = jb2.library.getByIndex(index);
           position = jb2.decodeSymbolPosition({
             width: symbol.getWidth(),
             height: symbol.getHeight()
-          });  
+          });
           symbol.draw({
             canvas: this.canvas,
             position: position

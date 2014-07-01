@@ -4,6 +4,8 @@ var JB2Decoder = function (config) {
   this.bigPositiveNumber = 262142;
   this.symbolWidth = new ZPNumContext(0, this.bigPositiveNumber);
   this.symbolHeight = new ZPNumContext(0, this.bigPositiveNumber);
+  this.symbolWidthDifference = new ZPNumContext(-this.bigPositiveNumber, this.bigPositiveNumber);
+  this.symbolHeightDifference = new ZPNumContext(-this.bigPositiveNumber, this.bigPositiveNumber);
   this.eventualImageRefinement = { value: 0 };
   this.symbolColumnNumber = new ZPNumContext(0, 0);
   this.symbolRowNumber= new ZPNumContext(0, 0);
@@ -96,6 +98,7 @@ var Symbol = function (config) {
   this.getHeight = function () {
     return height;
   };
+
   this.draw = function (config) {
     for (var x = 0; x < width; ++x) {
       for (var y = 0; y < height; ++y) {
@@ -105,7 +108,8 @@ var Symbol = function (config) {
       }
     }
   };
-  this.decodeDirectSymbol = function (config) {
+
+  this.decodeDirectSymbol = function () {
     width = jb2.zp.decodeWithNumContext(jb2.symbolWidth);
     height = jb2.zp.decodeWithNumContext(jb2.symbolHeight);
     lib.log(width, height);
@@ -130,6 +134,36 @@ var Symbol = function (config) {
       if (y == 244 || y == 243) {
         lib.log(ctxs);
       }
+    }
+  };
+
+  this.decodeRefinedSymbol = function (librarySymbol) {
+    width = librarySymbol.getWidth() + jb2.zp.decodeWithNumContext(jb2.symbolWidthDifference);
+    height = librarySymbol.getHeight() + jb2.zp.decodeWithNumContext(jb2.symbolHeightDifference);
+    lib.log(width, height);
+
+    var dx = [-1, 0,  1,  -1,    0, -1, 0,  1,  -1, 0,  1];
+    var dy = [-1, -1, -1, -0,   -1, 0,  0,  0,  1,  1,  1];
+    var align = {
+      x : Math.floor((librarySymbol.getWidth() - 1) / 2) - Math.floor((width - 1) / 2),
+      y : Math.floor((librarySymbol.getHeight() - 1) / 2) - Math.floor((height - 1) / 2),
+    };
+    for (var y = 0; y < height; ++y) {
+      var s = "";
+      for (var x = 0; x < width; ++x) {
+        var context = 0;
+        for (var i = 10; i >= 4; --i) {
+          context *= 2;
+          context += librarySymbol.getPixel(x + align.x + dx[i], y + align.y + dy[i]);
+        }
+        for (var j = 3; j >= 0; --j) {
+          context *= 2;
+          context += this.getPixel(x + dx[i], y + dy[i]);
+        }
+        data[y * width + x] = jb2.zp.decodeWithBitContext(jb2.symbolRefinementContexts[context]);
+        s += data[y * width + x];
+      }
+      lib.log(y + ")" + s);
     }
   };
 
