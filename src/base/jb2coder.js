@@ -120,16 +120,10 @@ var Symbol = function (config) {
         for (var i = 9; i >= 0; --i) {
           context = context * 2 + this.getPixel(x + dx[i], y + dy[i]);
         }
-        if (y == 244 || y == 243) {
-          ctxs += context + "(" + jb2.symbolDirectContexts[context].value + ")";
-        }
         data[y * width + x] = jb2.zp.decodeWithBitContext(jb2.symbolDirectContexts[context]);
         s += data[y * width + x];
       }
       lib.log(y + ")" + s);
-      if (y == 244 || y == 243) {
-        lib.log(ctxs);
-      }
     }
   };
 

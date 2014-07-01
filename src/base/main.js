@@ -141,10 +141,6 @@ var Renderer = function (config, manifest) {
     var position;
 
     while(true) {
-      if (q == 35) {
-        this.canvas.render();
-        break;
-      }
       record = jb2.decodeRecordType();
       switch(record) {
         case this.records.jb2_new_symbol_add_to_image_and_library:
