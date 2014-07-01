@@ -107,8 +107,8 @@ var Symbol = function (config) {
       var ctxs = "";
       for (var x = 0; x < width; ++x) {
         var context = 0;
-        for (var i = 0; i < 10; ++i) {
-          context |= this.getPixel(x + dx[i], y + dy[i]) << i;
+        for (var i = 9; i >= 0; --i) {
+          context = context * 2 + this.getPixel(x + dx[i], y + dy[i]);
         }
         if (y == 244 || y == 243) {
           ctxs += context + "(" + jb2.symbolDirectContexts[context].value + ")";
@@ -129,6 +129,66 @@ var Symbol = function (config) {
       return 0;
     }
     return data[y * width + x];
+  };
+
+  this.crop = function () {
+    var left = -1;
+    var top = -1;
+    var _width = width;
+    var _height = height;
+    var i;
+    var brk = false;
+    while (!brk) {
+      left++;
+      for (i = top; i < _height; ++i) {
+        if (this.getPixel(left, i)) {
+          brk = true;
+          break;
+        }
+      }
+    }
+    brk = false;
+    while (!brk) {
+      _width--;
+      for (i = top; i < _height; ++i) {
+        if (this.getPixel(_width, i)) {
+          _width++;
+          brk = true;
+          break;
+        }
+      }
+    }
+    brk = false;
+    while (!brk) {
+      top++;
+      for (i = left; i < _width; ++i) {
+        if (this.getPixel(i, top)) {
+          brk = true;
+          break;
+        }
+      }
+    }
+    brk = false;
+    while (!brk) {
+      _height--;
+      for (i = left; i < _width; ++i) {
+        if (this.getPixel(i, _height)) {
+          _height++;
+          brk = true;
+          break;
+        }
+      }
+    }
+    _width -= left;
+    _height -= top;
+    for (var y = 0; y < _height; ++y) {
+      for (var x = 0; x < _width; ++x) {
+        data[y * _width + x] = this.getPixel(x + left, y + top);
+      }
+    }
+    data.length = _width * _height;
+    width = _width;
+    height = _height;
   };
 };
 
