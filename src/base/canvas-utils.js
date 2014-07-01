@@ -19,7 +19,6 @@ var CanvasUtils = function (config) {
       (0x00 << 16) |
       (0x00 << 8) |
       0x00;
-    alert(x + " " + y + " " + this.pixels[y * this.canvas.width + x]);
   };
   this.render = function () {
     this.imageData.data.set(this.buffer8);

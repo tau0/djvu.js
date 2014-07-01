@@ -5,7 +5,14 @@ module.exports = function(grunt) {
     pkg: grunt.file.readJSON('package.json'),
     concat: {
       options: {
-        banner: '"use strict";\n'
+        banner: 
+            "/* global\n" +
+            "document: false, DEBUG: false,\n" +
+            "console: false, XMLHttpRequest: false,\n" +
+            "Uint8ClampedArray: false, Uint32Array: false,\n" +
+            "ArrayBuffer: false, Uint8Array: false,\n" +
+            "*/\n" + 
+            '"use strict";\n'
       },
       dist: {
         src: 'src/base/**/*.js',

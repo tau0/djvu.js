@@ -104,15 +104,22 @@ var Symbol = function (config) {
     var dy = [-2, -2, -2, -1, -1, -1, -1, -1, 0,  0];
     for (var y = 0; y < height; ++y) {
       var s = "";
+      var ctxs = "";
       for (var x = 0; x < width; ++x) {
         var context = 0;
         for (var i = 0; i < 10; ++i) {
           context |= this.getPixel(x + dx[i], y + dy[i]) << i;
         }
+        if (y == 244 || y == 243) {
+          ctxs += context + "(" + jb2.symbolDirectContexts[context].value + ")";
+        }
         data[y * width + x] = jb2.zp.decodeWithBitContext(jb2.symbolDirectContexts[context]);
         s += data[y * width + x];
       }
-      lib.log(s);
+      lib.log(y + ")" + s);
+      if (y == 244 || y == 243) {
+        lib.log(ctxs);
+      }
     }
   };
 

@@ -139,7 +139,7 @@ var Renderer = function (config, manifest) {
     var q = 0; //TODO rm me
 
     while(true) {
-      if (q == 34) {
+      if (q == 35) {
         this.canvas.render();
         break;
       }
@@ -182,8 +182,6 @@ var Renderer = function (config, manifest) {
 
   this.fetcher = new Fetcher(config, manifest);
 };
-// Library
-// ============================================================================================
 // Constants region:
 // // ============================================================================================
 
