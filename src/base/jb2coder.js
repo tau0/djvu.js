@@ -14,6 +14,7 @@ var JB2Decoder = function (config) {
   this.newLineRowOffset = new ZPNumContext(-this.bigPositiveNumber, this.bigPositiveNumber);
   this.sameLineColumnOffset = new ZPNumContext(-this.bigPositiveNumber, this.bigPositiveNumber);
   this.sameLineRowOffset = new ZPNumContext(-this.bigPositiveNumber, this.bigPositiveNumber);
+  this.matchingSymbolIndex = new ZPNumContext(0, 0);
   var i;
   for (i = 0; i < 1024; ++i) {
     this.symbolDirectContexts[i] = { value : 0 };
@@ -79,6 +80,7 @@ var JB2Decoder = function (config) {
 
     return coords;
   };
+  this.library = new SymbolLibrary();
 };
 
 var Symbol = function (config) {
@@ -94,7 +96,15 @@ var Symbol = function (config) {
   this.getHeight = function () {
     return height;
   };
-
+  this.draw = function (config) {
+    for (var x = 0; x < width; ++x) {
+      for (var y = 0; y < height; ++y) {
+        if (this.getPixel(x, y)) {
+          config.canvas.put(x + config.position.x, y + config.position.y);
+        }
+      }
+    }
+  };
   this.decodeDirectSymbol = function (config) {
     width = jb2.zp.decodeWithNumContext(jb2.symbolWidth);
     height = jb2.zp.decodeWithNumContext(jb2.symbolHeight);
@@ -203,3 +213,18 @@ var JB2Rect = function (left, top, width, height) {
   };
 };
 
+var SymbolLibrary = function (config) {
+  var data = [];
+  this.addSymbol = function (symbol) {
+    data.push(symbol);
+  };
+  this.getByIndex = function (index) {
+    if (index < 0 || index >= data.length) {
+      throw "out of borders";
+    }
+    return data[index];
+  };
+  this.getSize= function () {
+    return data.length;
+  };
+};

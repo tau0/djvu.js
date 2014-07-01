@@ -137,6 +137,8 @@ var Renderer = function (config, manifest) {
 
     var libCount = 0;
     var q = 0; //TODO rm me
+    var symbol = new Symbol({ jb2 : jb2 });
+    var position;
 
     while(true) {
       if (q == 35) {
@@ -147,20 +149,33 @@ var Renderer = function (config, manifest) {
       switch(record) {
         case this.records.jb2_new_symbol_add_to_image_and_library:
           lib.log("jb2_new_symbol_add_to_image_and_library");
-          var symbol = new Symbol({ jb2 : jb2 });
           symbol.decodeDirectSymbol();
-          var position = jb2.decodeSymbolPosition({
+          position = jb2.decodeSymbolPosition({
             width : symbol.getWidth(),
             height : symbol.getHeight()
           });
           lib.log("symbol: " + q++);
-          for (var x = 0; x < symbol.getWidth(); ++x) {
-            for (var y = 0; y < symbol.getHeight(); ++y) {
-              if (symbol.getPixel(x, y)) {
-                this.canvas.put(x + position.x, y + position.y);
-              }
-            }
-          }
+          symbol.draw({
+            canvas: this.canvas,
+            position: position
+          });
+          symbol.crop();
+          jb2.library.addSymbol(symbol);
+        break;
+        case this.records.jb2_matched_symbol_copy_to_image_without_refinement:
+          lib.log("jb2_matched_symbol_copy_to_image_without_refinement");
+          jb2.matchingSymbolIndex.setInterval(0, jb2.library.getSize() - 1);
+          var index = zp.decodeWithNumContext(jb2.matchingSymbolIndex);
+          symbol = jb2.library.getByIndex(index);
+          position = jb2.decodeSymbolPosition({
+            width: symbol.getWidth(),
+            height: symbol.getHeight()
+          });  
+          //symbol.draw({
+          //  canvas: this.canvas,
+          //  position: position
+          //});
+          lib.log(position);
         break;
         default:
           this.canvas.render();

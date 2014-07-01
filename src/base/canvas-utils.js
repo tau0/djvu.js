@@ -9,11 +9,6 @@ var CanvasUtils = function (config) {
   }
 
   this.put = function (x, y) {
-    y = this.canvas.height - y;
-    x--;
-    if (x >= this.canvas.width || y >= this.canvas.height) {
-      throw "Wrong point";
-    }
     this.pixels[y * this.canvas.width + x] =
       (255 << 24) |
       (0x00 << 16) |
