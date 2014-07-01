@@ -134,14 +134,15 @@ var Symbol = function (config) {
   this.decodeRefinedSymbol = function (librarySymbol) {
     width = librarySymbol.getWidth() + jb2.zp.decodeWithNumContext(jb2.symbolWidthDifference);
     height = librarySymbol.getHeight() + jb2.zp.decodeWithNumContext(jb2.symbolHeightDifference);
-    lib.log(width, height);
+    lib.log(width, height, librarySymbol.getWidth(), librarySymbol.getHeight());
 
     var dx = [-1, 0,  1,  -1,    0, -1, 0,  1,  -1, 0,  1];
     var dy = [-1, -1, -1, -0,   -1, 0,  0,  0,  1,  1,  1];
     var align = {
       x : Math.floor((librarySymbol.getWidth() - 1) / 2) - Math.floor((width - 1) / 2),
-      y : Math.floor((librarySymbol.getHeight() - 1) / 2) - Math.floor((height - 1) / 2),
+      y : Math.floor((librarySymbol.getHeight() - 0) / 2) - Math.floor((height - 0) / 2),
     };
+    lib.log(align);
     for (var y = 0; y < height; ++y) {
       var s = "";
       for (var x = 0; x < width; ++x) {
@@ -152,7 +153,7 @@ var Symbol = function (config) {
         }
         for (var j = 3; j >= 0; --j) {
           context *= 2;
-          context += this.getPixel(x + dx[i], y + dy[i]);
+          context += this.getPixel(x + dx[j], y + dy[j]);
         }
         data[y * width + x] = jb2.zp.decodeWithBitContext(jb2.symbolRefinementContexts[context]);
         s += data[y * width + x];

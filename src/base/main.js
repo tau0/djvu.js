@@ -164,6 +164,7 @@ var Renderer = function (config, manifest) {
           lib.log("jb2_matched_symbol_with_refinement_add_to_image_and_library");
           jb2.matchingSymbolIndex.setInterval(0, jb2.library.getSize() - 1);
           index = zp.decodeWithNumContext(jb2.matchingSymbolIndex);
+          lib.log("INDEX: ", index);
 
           symbol = new Symbol({ jb2 : jb2 });
           symbol.decodeRefinedSymbol(jb2.library.getByIndex(index));
@@ -178,6 +179,7 @@ var Renderer = function (config, manifest) {
           });
           symbol.crop();
           jb2.library.addSymbol(symbol);
+          alert(q);
         break;
         case this.records.jb2_matched_symbol_copy_to_image_without_refinement:
           lib.log("jb2_matched_symbol_copy_to_image_without_refinement");
