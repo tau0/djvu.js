@@ -149,6 +149,7 @@ var Renderer = function (config, manifest) {
       switch(record) {
         case this.records.jb2_new_symbol_add_to_image_and_library:
           lib.log("jb2_new_symbol_add_to_image_and_library");
+          symbol = new Symbol({ jb2 : jb2 });
           symbol.decodeDirectSymbol();
           position = jb2.decodeSymbolPosition({
             width : symbol.getWidth(),
@@ -171,10 +172,10 @@ var Renderer = function (config, manifest) {
             width: symbol.getWidth(),
             height: symbol.getHeight()
           });  
-          //symbol.draw({
-          //  canvas: this.canvas,
-          //  position: position
-          //});
+          symbol.draw({
+            canvas: this.canvas,
+            position: position
+          });
           lib.log(position);
         break;
         default:
