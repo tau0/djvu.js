@@ -222,8 +222,8 @@ var ZPDecoder = function (input) {
 
       var shift = ffz(a);
       scount -= shift;
-      a = (a << shift) % 65536;
-      code = ((code << shift) | ((buffer >> scount) & ((1 << shift) - 1))) % 65536;
+      a = lib.toUnsignedShort(a << shift);
+      code = lib.toUnsignedShort((code << shift) | ((buffer >> scount) & ((1 << shift) - 1)));
       if (scount < 16) {
         this.preload();
       }
@@ -238,8 +238,8 @@ var ZPDecoder = function (input) {
         context.value = ZP_up_table[context.value];
 
       scount -= 1;
-      a = (z << 1) % 65536;
-      code = ((code << 1) | ((buffer >> scount) & 1)) % 65536;
+      a = lib.toUnsignedShort(z << 1);
+      code = lib.toUnsignedShort((code << 1) | ((buffer >> scount) & 1));
       if (scount < 16) {
         this.preload();
       }

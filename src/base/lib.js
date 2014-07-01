@@ -13,5 +13,9 @@ var lib = {
     if (DEBUG) {
       console.log.apply(console, arguments);
     }
+  },
+  // TODO: Some buggy magic.
+  toUnsignedShort: function (a) {
+    return (a % 65536 + 65536) % 65536;
   }
 };
