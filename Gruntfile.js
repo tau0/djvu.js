@@ -20,7 +20,7 @@ module.exports = function(grunt) {
       }
     },
     jshint: {
-      beforeconcat: ['src/**/*.js', 'src/bar.js'],
+      beforeconcat: ['src/**/*.js'],
       afterconcat: ['build/*.js'],
       options: {
         '-W097': false
