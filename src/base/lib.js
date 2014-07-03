@@ -1,8 +1,6 @@
 var lib = {
   clearArray: function(array) {
-    while (array.length > 0) {
-        array.shift();
-    }
+    array.length = 0;
   },
   assert: function(value) {
     if (!value) {

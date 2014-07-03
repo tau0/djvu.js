@@ -5,11 +5,13 @@
         <title></title>
     </head>
     <body>
-        <canvas id="canvas"> </canvas>
+        <img src="" id='target' alt='loading'>
         <script src='build/base.js'> </script> 
         <script src='http://yandex.st/jquery/2.1.1/jquery.min.js'> </script>
+        <script src='pnglib.js'> </script>
+        <script src='FileSaver.js'> </script>
         <script>
-            var DEBUG = false;
+            var DEBUG = true;
             var config = {
                 url: 'http://178.63.105.73/test/aHR0cDovL2xpYmdlbi5vcmcvZ2V0P25hbWV0eXBlPW9yaWcmbWQ1PTAwMDAwOWRhNThkMmIwMzUxOTM0OTZhOTg2MTU2MWM0',
                 canvas : null

@@ -62,7 +62,6 @@ var JB2Decoder = function (config) {
 
     } else {
       coords.x = prev1.left + prev1.width - 1 + this.zp.decodeWithNumContext(this.sameLineColumnOffset);
-      lib.log("~~", prev1.left, prev1.width);
       var baseLine;
       if (lineCounter < 3) {
         baseLine = first.top + first.height;
@@ -78,7 +77,6 @@ var JB2Decoder = function (config) {
       prev2 = prev1;
       prev1 = new JB2Rect(coords.x, coords.y, w, h);
     }
-    lib.log("!", coords.x, coords.y);
 
     return coords;
   };
@@ -113,22 +111,17 @@ var Symbol = function (config) {
     width = jb2.zp.decodeWithNumContext(jb2.symbolWidth);
     height = jb2.zp.decodeWithNumContext(jb2.symbolHeight);
     data.resize(width * height);
-    lib.log(width, height);
 
     var dx = [-1, 0,  1,  -2, -1, 0,  1,  2,  -2, -1];
     var dy = [-2, -2, -2, -1, -1, -1, -1, -1, 0,  0];
     for (var y = 0; y < height; ++y) {
-      var s = "";
-      var ctxs = "";
       for (var x = 0; x < width; ++x) {
         var context = 0;
         for (var i = 9; i >= 0; --i) {
           context = context * 2 + this.getPixel(x + dx[i], y + dy[i]);
         }
         data.setBit(y * width + x, jb2.zp.decodeWithBitContext(jb2.symbolDirectContexts[context]));
-        s += data.getBit(y * width + x);
       }
-      lib.log(y + ")" + s);
     }
   };
 
@@ -136,7 +129,6 @@ var Symbol = function (config) {
     width = librarySymbol.getWidth() + jb2.zp.decodeWithNumContext(jb2.symbolWidthDifference);
     height = librarySymbol.getHeight() + jb2.zp.decodeWithNumContext(jb2.symbolHeightDifference);
     data.resize(width * height);
-    lib.log(width, height, librarySymbol.getWidth(), librarySymbol.getHeight());
 
     var dx = [-1, 0,  1,  -1,    0, -1, 0,  1,  -1, 0,  1];
     var dy = [-1, -1, -1, -0,   -1, 0,  0,  0,  1,  1,  1];
@@ -144,9 +136,7 @@ var Symbol = function (config) {
       x : Math.floor((librarySymbol.getWidth() - 1) / 2) - Math.floor((width - 1) / 2),
       y : Math.floor((librarySymbol.getHeight() - 0) / 2) - Math.floor((height - 0) / 2),
     };
-    lib.log(align);
     for (var y = 0; y < height; ++y) {
-      var s = "";
       for (var x = 0; x < width; ++x) {
         var context = 0;
         for (var i = 10; i >= 4; --i) {
@@ -158,9 +148,7 @@ var Symbol = function (config) {
           context += this.getPixel(x + dx[j], y + dy[j]);
         }
         data.setBit(y * width + x, jb2.zp.decodeWithBitContext(jb2.symbolRefinementContexts[context]));
-        s += data.getBit(y * width + x);
       }
-      lib.log(y + ")" + s);
     }
   };
 

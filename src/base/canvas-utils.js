@@ -1,30 +1,68 @@
 var CanvasUtils = function (config) {
-  if (config && config.id) {
-    this.canvas = document.getElementById(config.id);
-    this.ctx = this.canvas.getContext('2d');
-    this.imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-    this.buffer = new ArrayBuffer(this.imageData.data.length);
-    this.pixels = new Uint32Array(this.buffer);
-    this.buffer8 = new Uint8ClampedArray(this.buffer);
-  }
+  var indent = 512;
+  var data = null;
+  var width = 0;
+  var height = 0;
+
+  var rowSize = function () {
+    return Math.floor((width + 31) / 32) * 4;
+  };
+
+  var saveInt = function (offset, number) {
+    for (var i = 0; i < 4; ++i) {
+      data[offset + i] = 0xff & (number >> (i * 8));
+    }
+  };
+
+  var makeHeader = function () {
+    //magic number
+    data[0] = 0x42;
+    data[1] = 0x4d;
+    saveInt(2, data.length);
+    saveInt(10, indent);
+    //size of DIB header
+    saveInt(14, 40);
+    saveInt(18, width);
+    saveInt(22, -height);
+    //must be 1
+    data[26] = 1;
+    //number of pixels encoding colors
+    data[28] = 1;
+    //pixels in meter horizontally
+    data[38] = 255;
+    //pixels in meter vertically
+    data[42] = 255;
+    //using all possible colors
+    data[46] = 0;
+    //color table
+    data[54] = 0xff;
+    data[55] = 0xff;
+    data[56] = 0xff;
+    //data[58 .. 60] = 0x00;
+  };
 
   this.put = function (x, y) {
-    this.pixels[y * this.canvas.width + x] =
-      (255 << 24) |
-      (0x00 << 16) |
-      (0x00 << 8) |
-      0x00;
+    if (x < 0 || y < 0) {
+      throw "you know what to do";
+    }
+    var yIndent = rowSize() * y;
+    var i = indent + yIndent + Math.floor(x / 8);
+    data[i] |= 1 << (7 - x % 8);
   };
+
   this.render = function () {
-    this.imageData.data.set(this.buffer8);
-    this.ctx.putImageData(this.imageData, 0, 0);
+    makeHeader();
+    var blob = new Blob([ data ], { "type" : "image\/bmp" });
+    return URL.createObjectURL(blob);
   };
+
   this.resize = function (config){
-    this.canvas.width = config.width;
-    this.canvas.height = config.height;
-    this.imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-    this.buffer = new ArrayBuffer(this.imageData.data.length);
-    this.pixels = new Uint32Array(this.buffer);
-    this.buffer8 = new Uint8ClampedArray(this.buffer);
+    width = config.width;
+    height = config.height;
+    data = new Uint8Array(indent + height * rowSize());
+  };
+
+  this.clean = function () {
+    data = null;
   };
 };
