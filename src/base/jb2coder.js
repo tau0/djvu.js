@@ -107,18 +107,21 @@ var Symbol = function (config) {
     }
   };
 
+  var ddx = [-1,	0,  1, -2, -1,  0, 1,  2, -2, -1];
+  var ddy = [-2, -2, -2, -1, -1, -1,-1, -1,  0,  0];
+  var dfx = [-1,  0,  1, -1,  0, -1, 0,  1, -1,  0,  1];
+  var dfy = [-1, -1, -1, -0, -1,  0, 0,  0,  1,  1,  1];
+
   this.decodeDirectSymbol = function () {
     width = jb2.zp.decodeWithNumContext(jb2.symbolWidth);
     height = jb2.zp.decodeWithNumContext(jb2.symbolHeight);
     data.resize(width * height);
 
-    var dx = [-1, 0,  1,  -2, -1, 0,  1,  2,  -2, -1];
-    var dy = [-2, -2, -2, -1, -1, -1, -1, -1, 0,  0];
     for (var y = 0; y < height; ++y) {
       for (var x = 0; x < width; ++x) {
         var context = 0;
         for (var i = 9; i >= 0; --i) {
-          context = context * 2 + this.getPixel(x + dx[i], y + dy[i]);
+          context = context * 2 + this.getPixel(x + ddx[i], y + ddy[i]);
         }
         data.setBit(y * width + x, jb2.zp.decodeWithBitContext(jb2.symbolDirectContexts[context]));
       }
@@ -130,22 +133,20 @@ var Symbol = function (config) {
     height = librarySymbol.getHeight() + jb2.zp.decodeWithNumContext(jb2.symbolHeightDifference);
     data.resize(width * height);
 
-    var dx = [-1, 0,  1,  -1,    0, -1, 0,  1,  -1, 0,  1];
-    var dy = [-1, -1, -1, -0,   -1, 0,  0,  0,  1,  1,  1];
     var align = {
-      x : Math.floor((librarySymbol.getWidth() - 1) / 2) - Math.floor((width - 1) / 2),
-      y : Math.floor((librarySymbol.getHeight() - 0) / 2) - Math.floor((height - 0) / 2),
+      x : ((librarySymbol.getWidth() - 1) >> 1) - ((width - 1) >> 1),
+      y : ((librarySymbol.getHeight() - 0) >> 1) - ((height - 0) >> 1),
     };
     for (var y = 0; y < height; ++y) {
       for (var x = 0; x < width; ++x) {
         var context = 0;
         for (var i = 10; i >= 4; --i) {
           context *= 2;
-          context += librarySymbol.getPixel(x + align.x + dx[i], y + align.y + dy[i]);
+          context += librarySymbol.getPixel(x + align.x + dfx[i], y + align.y + dfy[i]);
         }
         for (var j = 3; j >= 0; --j) {
           context *= 2;
-          context += this.getPixel(x + dx[j], y + dy[j]);
+          context += this.getPixel(x + dfx[j], y + dfy[j]);
         }
         data.setBit(y * width + x, jb2.zp.decodeWithBitContext(jb2.symbolRefinementContexts[context]));
       }
