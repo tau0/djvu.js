@@ -53,11 +53,11 @@ var lib = {
       data[Math.floor(n / bitNum)] |= b << (n % bitNum);
     };
     this.getBit = function (n) {
-      n = Math.round(n);
-      if (n < 0 || n >= data.length * bitNum) {
-        throw "bitArray: out of bounds";
-      }
-      return (data[Math.floor(n / bitNum)] >> (n % bitNum)) & 1;
+      //n = Math.round(n);
+      //if (n < 0 || n >= data.length * bitNum) {
+      //  throw "bitArray: out of bounds";
+      //}
+      return (data[~~(n / bitNum)] >> (n % bitNum)) & 1;
     };
     this.resize(n);
   }
