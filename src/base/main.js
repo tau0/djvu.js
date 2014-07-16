@@ -187,14 +187,12 @@ var Renderer = function (config, manifest) {
           });
         break;
         case this.records.jb2_end_of_data:
+          lib.log("time: " + ((new Date()).getTime() - st));
           var img = document.getElementById(target);
           img.src = this.canvas.render();
           jb2 = null;
           zp = null;
           brk = true;
-          img.onload = function () {
-            lib.log("time: " + ((new Date()).getTime() - st));
-          };
         break;
         default:
           document.getElementById(target).src = this.canvas.render();
