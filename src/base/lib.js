@@ -28,18 +28,12 @@ var lib = {
     };
     this.setBit = function (n, b) {
       n = n | 0;
-      if (n < 0 || n >= data.length << 5) {
-        return;
-      }
       data[n >> 5] |= 1 << (n & 0x1F);
       data[n >> 5] ^= 1 << (n & 0x1F);
       data[n >> 5] |= b << (n & 0x1F);
     };
     this.getBit = function (n) {
       n = n | 0;
-      if (n < 0 || n >= data.length << 5) {
-        return;
-      }
       return (data[n >> 5] >> (n & 0x1F)) & 1;
     };
     this.resize(n);
