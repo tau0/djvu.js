@@ -124,8 +124,8 @@ var Symbol = function (config) {
       for (var x = 0; x < width; ++x) {
         context =
           ((context >> 1) & 0x37B) |
-          ((this.getPixel(x + 1, y - 2) & 1) << 2) |
-          ((this.getPixel(x + 2, y - 1) & 1) << 7) |
+          (this.getPixel(x + 1, y - 2) << 2) |
+          (this.getPixel(x + 2, y - 1) << 7) |
           (lastBit << 9);
 
         lastBit = jb2.zp.decodeWithBitContext(jb2.symbolDirectContexts[context]);
