@@ -37,7 +37,7 @@ var lib = {
     };
     this.getBit = function (n) {
       n = n | 0;
-      if (n < 0 || n >= data.length * 32) {
+      if (n < 0 || n >= data.length << 5) {
         return;
       }
       return (data[n >> 5] >> (n & 0x1F)) & 1;
