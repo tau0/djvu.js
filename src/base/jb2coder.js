@@ -116,15 +116,25 @@ var Symbol = function (config) {
     width = jb2.zp.decodeWithNumContext(jb2.symbolWidth);
     height = jb2.zp.decodeWithNumContext(jb2.symbolHeight);
     data.resize(width * height);
+    var context = 0;
+    var lastBit;
 
     for (var y = 0; y < height; ++y) {
+      lastBit = 0;
       for (var x = 0; x < width; ++x) {
-        var context = 0;
-        for (var i = 9; i >= 0; --i) {
-          context = context * 2 + this.getPixel(x + ddx[i], y + ddy[i]);
-        }
-        data.setBit(y * width + x, jb2.zp.decodeWithBitContext(jb2.symbolDirectContexts[context]));
+        context =
+          ((context >> 1) & 0x37B) |
+          ((this.getPixel(x + 1, y - 2) & 1) << 2) |
+          ((this.getPixel(x + 2, y - 1) & 1) << 7) |
+          (lastBit << 9);
+
+        lastBit = jb2.zp.decodeWithBitContext(jb2.symbolDirectContexts[context]);
+        data.setBit(y * width + x, lastBit);
       }
+      context = 0 |
+        (this.getPixel(0, y - 1) << 2) |
+        (this.getPixel(0, y) << 6) |
+        (this.getPixel(1, y) << 7);
     }
   };
 
