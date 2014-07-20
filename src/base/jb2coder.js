@@ -87,6 +87,7 @@ var Symbol = function (config) {
   var data = new lib.bitArray(0);
   var jb2 = config.jb2 || null;
   var width;
+  var width32;
   var height;
 
   this.getWidth = function () {
@@ -107,15 +108,14 @@ var Symbol = function (config) {
     }
   };
 
-  var ddx = [-1,	0,  1, -2, -1,  0, 1,  2, -2, -1];
-  var ddy = [-2, -2, -2, -1, -1, -1,-1, -1,  0,  0];
   var dfx = [-1,  0,  1, -1,  0, -1, 0,  1, -1,  0,  1];
   var dfy = [-1, -1, -1, -0, -1,  0, 0,  0,  1,  1,  1];
 
   this.decodeDirectSymbol = function () {
     width = jb2.zp.decodeWithNumContext(jb2.symbolWidth);
+    width32 = (width + 0x1F) & ~0x1F;
     height = jb2.zp.decodeWithNumContext(jb2.symbolHeight);
-    data.resize(width * height);
+    data.resize(width32 * height);
     var context = 0;
     var lastBit;
 
@@ -129,7 +129,7 @@ var Symbol = function (config) {
           (lastBit << 9);
 
         lastBit = jb2.zp.decodeWithBitContext(jb2.symbolDirectContexts[context]);
-        data.setBit(y * width + x, lastBit);
+        data.setBit(y * width32 + x, lastBit);
       }
       context = 0 |
         (this.getPixel(0, y - 1) << 2) |
@@ -140,8 +140,9 @@ var Symbol = function (config) {
 
   this.decodeRefinedSymbol = function (librarySymbol) {
     width = librarySymbol.getWidth() + jb2.zp.decodeWithNumContext(jb2.symbolWidthDifference);
+    width32 = (width + 0x1F) & ~0x1F;
     height = librarySymbol.getHeight() + jb2.zp.decodeWithNumContext(jb2.symbolHeightDifference);
-    data.resize(width * height);
+    data.resize(width32 * height);
 
     var align = {
       x : ((librarySymbol.getWidth() - 1) >> 1) - ((width - 1) >> 1),
@@ -158,7 +159,7 @@ var Symbol = function (config) {
           context *= 2;
           context += this.getPixel(x + dfx[j], y + dfy[j]);
         }
-        data.setBit(y * width + x, jb2.zp.decodeWithBitContext(jb2.symbolRefinementContexts[context]));
+        data.setBit(y * width32 + x, jb2.zp.decodeWithBitContext(jb2.symbolRefinementContexts[context]));
       }
     }
   };
@@ -168,66 +169,81 @@ var Symbol = function (config) {
     if (x < 0 || y < 0 || x >= width || y >= height) {
       return 0;
     }
-    return data.getBit(y * width + x);
+    return data.getBit(y * width32 + x);
   };
 
   this.crop = function () {
-    var left = -1;
-    var top = -1;
+    var left = 0;
+    var top = 0;
     var _width = width;
     var _height = height;
     var i;
+
     var brk = false;
+    left -= 0x1F;
     while (!brk) {
-      left++;
+      left += 0x1F;
       for (i = top; i < _height; ++i) {
-        if (this.getPixel(left, i)) {
+        if (data.getBit(left + width32 * i)) {
           brk = true;
           break;
         }
       }
     }
+
     brk = false;
     while (!brk) {
       _width--;
       for (i = top; i < _height; ++i) {
-        if (this.getPixel(_width, i)) {
+        if (data.getBit(_width + width32 * i)) {
           _width++;
           brk = true;
           break;
         }
       }
     }
+
     brk = false;
+    top--;
     while (!brk) {
       top++;
-      for (i = left; i < _width; ++i) {
-        if (this.getPixel(i, top)) {
+      for (i = left; i < _width; i += 0x1F) {
+        if (data.getWord(i + width32 * top)) {
           brk = true;
           break;
         }
       }
     }
+
     brk = false;
     while (!brk) {
       _height--;
-      for (i = left; i < _width; ++i) {
-        if (this.getPixel(i, _height)) {
+      for (i = left; i < _width; i += 0x1F) {
+        if (data.getWord(i + width32 * _height)) {
           _height++;
           brk = true;
           break;
         }
       }
     }
+
     _width -= left;
     _height -= top;
-    for (var y = 0; y < _height; ++y) {
-      for (var x = 0; x < _width; ++x) {
-        data.setBit(y * _width + x, this.getPixel(x + left, y + top));
+    var _width32 = (_width + 0x1F) & ~0x1F;
+    var x, y;
+    for (y = 0; y < _height; ++y) {
+      for (x = 0; x < _width; ++x) {
+        data.setBit(y * _width32 + x, this.getPixel(x + left, y + top));
       }
     }
-    data.resize(_width * _height);
+    for (y = 0; y < _height; ++y) {
+      for (x = _width; x < _width32; ++x) {
+        data.setBit(y * _width32 + x, 0);
+      }
+    }
+    data.resize(_width32 * _height);
     width = _width;
+    width32 = _width32;
     height = _height;
   };
 };
