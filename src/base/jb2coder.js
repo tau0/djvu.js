@@ -195,7 +195,14 @@ var Symbol = function (config) {
           now = 0x10;
           word = word >>> 0x10;
         }
-        now += lz[word];
+	// Fucking crazy bro! LEADINGZEROIS 0000000000111
+	//				    ++++++++++---
+	// TRAILING ZEROS 		    0000000000110
+	//				    ------------+
+	// our bit array INT32REVERSED|INT32REVERSED|...
+	// So symbol |***| is 00000000...000111, TZ: 0!!!
+	// And symbol |0**| is 00000000...000110, TZ: 1!!!
+        now += /*not fucking LZ*/ tz[word]; 
         worst = Math.min(worst, now);
       }
       left += worst;
