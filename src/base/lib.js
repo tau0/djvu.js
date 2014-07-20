@@ -1,4 +1,26 @@
 var lib = {
+  getLZ16Array: function () {
+    var res = [];
+    var prev = 0x10000;
+    var fill = 0;
+    for (var i = 0x10000; i-- !== 0; ) {
+      res[i] = fill;
+      if ((i << 1) === prev) {
+        fill++;
+        prev = i;
+      }
+    }
+    return res;
+  },
+  getTZ16Array: function () {
+    var res = [];
+    res[0] = 16;
+    res[1] = 0;
+    for (var i = 2; i < 0x10000; ++i) {
+      res[i] = (i & 1 === 1) ? 0 : res[i >> 1] + 1;
+    }
+    return res;
+  },
   clearArray: function(array) {
     array.length = 0;
   },
@@ -17,7 +39,7 @@ var lib = {
 
   // TODO: Some buggy magic.
   toUnsignedShort: function (a) {
-    return (a & 0xFFFF + 65536) & 0xFFFF;
+    return (a & 0xFFFF);
   },
 
   bitArray : function (n) {

@@ -33,6 +33,8 @@ var JB2Decoder = function (config) {
   var prev1 = new JB2Rect(-1, 0, 0, 1);
   var prev2 = new JB2Rect(-1, 0, 0, 1);
   var prev3 = new JB2Rect(-1, 0, 0, 1);
+  this.lz = lib.getLZ16Array();
+  this.tz = lib.getTZ16Array();
 
   this.data = config.data || null;
   this.getc = config.getter || undefined;
@@ -89,6 +91,8 @@ var Symbol = function (config) {
   var width;
   var width32;
   var height;
+  var lz = jb2.lz;
+  var tz = jb2.tz;
 
   this.getWidth = function () {
     return width;
@@ -178,20 +182,26 @@ var Symbol = function (config) {
     var _width = width;
     var _height = height;
     var i;
+    var now, worst, word;
 
-    var brk = false;
-    left -= 0x1F;
-    while (!brk) {
-      left += 0x1F;
+    worst = 0x20;
+    while (worst == 0x20) {
       for (i = top; i < _height; ++i) {
-        if (data.getBit(left + width32 * i)) {
-          brk = true;
-          break;
+        word = data.getWord(left + width32 * i);
+        if (word & 0xFFFF) {
+          now = 0;
+          word = word & 0xFFFF;
+        } else {
+          now = 0x10;
+          word = word >>> 0x10;
         }
+        now += lz[word];
+        worst = Math.min(worst, now);
       }
+      left += worst;
     }
 
-    brk = false;
+    var brk = false;
     while (!brk) {
       _width--;
       for (i = top; i < _height; ++i) {
@@ -207,7 +217,7 @@ var Symbol = function (config) {
     top--;
     while (!brk) {
       top++;
-      for (i = left; i < _width; i += 0x1F) {
+      for (i = left; i < _width; i += 0x20) {
         if (data.getWord(i + width32 * top)) {
           brk = true;
           break;
@@ -218,7 +228,7 @@ var Symbol = function (config) {
     brk = false;
     while (!brk) {
       _height--;
-      for (i = left; i < _width; i += 0x1F) {
+      for (i = left; i < _width; i += 0x20) {
         if (data.getWord(i + width32 * _height)) {
           _height++;
           brk = true;
