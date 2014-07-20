@@ -4,19 +4,29 @@ module.exports = function(grunt) {
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
     concat: {
-      options: {
-        banner: 
+      debug: {
+        banner:
             "/* global\n" +
             "document: false, DEBUG: false,\n" +
             "console: false, XMLHttpRequest: false,\n" +
             "Uint8ClampedArray: false, Uint32Array: false,\n" +
             "ArrayBuffer: false, Uint8Array: false,\n" +
-            "*/\n" + 
-            '"use strict";\n'
-      },
-      dist: {
+            "*/\n" +
+            '"use strict";\n',
         src: 'src/base/**/*.js',
         dest: 'build/base.js'
+      },
+      production: {
+        banner:
+            "/* global\n" +
+            "document: false, DEBUG: false,\n" +
+            "console: false, XMLHttpRequest: false,\n" +
+            "Uint8ClampedArray: false, Uint32Array: false,\n" +
+            "ArrayBuffer: false, Uint8Array: false,\n" +
+            "*/\n" +
+            '"use strict";\n',
+        src: 'src/base/**/*.js',
+        dest: 'djvu/djvu.js'
       }
     },
     jshint: {
@@ -48,6 +58,7 @@ module.exports = function(grunt) {
    grunt.loadNpmTasks('grunt-shell');
 
   // Default task(s).
-  grunt.registerTask('default', ['concat', 'jshint', 'shell', 'mochaTest']);
+  grunt.registerTask('default', ['concat:debug', 'jshint', 'shell', 'mochaTest']);
+  grunt.registerTask('prod', ['concat:production']);
 
 };
