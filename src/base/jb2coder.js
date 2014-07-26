@@ -91,22 +91,24 @@ var Symbol = function (config) {
   var width;
   var width32;
   var height;
+  var topOffset = 0;
+  var leftOffset = 0;
   var lz = jb2.lz;
   var tz = jb2.tz;
 
-  this.getWidth = function () {
-    return width;
+  this.getRealWidth = function () {
+    return width - leftOffset;
   };
 
-  this.getHeight = function () {
-    return height;
+  this.getRealHeight = function () {
+    return height - topOffset;
   };
 
   this.draw = function (config) {
-    for (var x = 0; x < width; ++x) {
-      for (var y = 0; y < height; ++y) {
+    for (var x = leftOffset; x < width; ++x) {
+      for (var y = topOffset; y < height; ++y) {
         if (this.getPixel(x, y)) {
-          config.canvas.put(x + config.position.x, y + config.position.y);
+          config.canvas.put(x - leftOffset + config.position.x, y - topOffset + config.position.y);
         }
       }
     }
@@ -143,14 +145,14 @@ var Symbol = function (config) {
   };
 
   this.decodeRefinedSymbol = function (librarySymbol) {
-    width = librarySymbol.getWidth() + jb2.zp.decodeWithNumContext(jb2.symbolWidthDifference);
+    width = librarySymbol.getRealWidth() + jb2.zp.decodeWithNumContext(jb2.symbolWidthDifference);
     width32 = (width + 0x1F) & ~0x1F;
-    height = librarySymbol.getHeight() + jb2.zp.decodeWithNumContext(jb2.symbolHeightDifference);
+    height = librarySymbol.getRealHeight() + jb2.zp.decodeWithNumContext(jb2.symbolHeightDifference);
     data.resize(width32 * height);
 
     var align = {
-      x : ((librarySymbol.getWidth() - 1) >> 1) - ((width - 1) >> 1),
-      y : ((librarySymbol.getHeight() - 0) >> 1) - ((height - 0) >> 1),
+      x : leftOffset + ((librarySymbol.getRealWidth() - 1) >> 1) - ((this.getRealWidth() - 1) >> 1),
+      y : topOffset + ((librarySymbol.getRealHeight() - 0) >> 1) - ((this.getRealHeight()- 0) >> 1),
     };
     for (var y = 0; y < height; ++y) {
       for (var x = 0; x < width; ++x) {
@@ -196,13 +198,13 @@ var Symbol = function (config) {
           word = word >>> 0x10;
         }
 	// Fucking crazy bro! LEADINGZEROIS 0000000000111
-	//				    ++++++++++---
+	//			                      	    ++++++++++---
 	// TRAILING ZEROS 		    0000000000110
-	//				    ------------+
+	//            				    ------------+
 	// our bit array INT32REVERSED|INT32REVERSED|...
 	// So symbol |***| is 00000000...000111, TZ: 0!!!
 	// And symbol |0**| is 00000000...000110, TZ: 1!!!
-        now += /*not fucking LZ*/ tz[word]; 
+        now += /*not fucking LZ*/ tz[word];
         worst = Math.min(worst, now);
       }
       left += worst;
@@ -243,25 +245,10 @@ var Symbol = function (config) {
         }
       }
     }
-
-    _width -= left;
-    _height -= top;
-    var _width32 = (_width + 0x1F) & ~0x1F;
-    var x, y;
-    for (y = 0; y < _height; ++y) {
-      for (x = 0; x < _width; ++x) {
-        data.setBit(y * _width32 + x, this.getPixel(x + left, y + top));
-      }
-    }
-    for (y = 0; y < _height; ++y) {
-      for (x = _width; x < _width32; ++x) {
-        data.setBit(y * _width32 + x, 0);
-      }
-    }
-    data.resize(_width32 * _height);
     width = _width;
-    width32 = _width32;
     height = _height;
+    leftOffset = left;
+    topOffset = top;
   };
 };
 

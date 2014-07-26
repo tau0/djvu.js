@@ -146,8 +146,8 @@ var Renderer = function (config, manifest) {
           symbol = new Symbol({ jb2 : jb2 });
           symbol.decodeDirectSymbol();
           position = jb2.decodeSymbolPosition({
-            width : symbol.getWidth(),
-            height : symbol.getHeight()
+            width : symbol.getRealWidth(),
+            height : symbol.getRealHeight()
           });
           symbol.draw({
             canvas: this.canvas,
@@ -163,8 +163,8 @@ var Renderer = function (config, manifest) {
           symbol = new Symbol({ jb2 : jb2 });
           symbol.decodeRefinedSymbol(jb2.library.getByIndex(index));
           position = jb2.decodeSymbolPosition({
-            width : symbol.getWidth(),
-            height : symbol.getHeight()
+            width : symbol.getRealWidth(),
+            height : symbol.getRealHeight()
           });
           symbol.draw({
             canvas: this.canvas,
@@ -178,8 +178,8 @@ var Renderer = function (config, manifest) {
           index = zp.decodeWithNumContext(jb2.matchingSymbolIndex);
           symbol = jb2.library.getByIndex(index);
           position = jb2.decodeSymbolPosition({
-            width: symbol.getWidth(),
-            height: symbol.getHeight()
+            width: symbol.getRealWidth(),
+            height: symbol.getRealHeight()
           });
           symbol.draw({
             canvas: this.canvas,
