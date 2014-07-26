@@ -41,13 +41,10 @@ var CanvasUtils = function (config) {
     //data[58 .. 60] = 0x00;
   };
 
-  this.put = function (x, y) {
-    if (x < 0 || y < 0) {
-      throw "you know what to do";
-    }
+  this.put = function (x, y, b) {
     var yIndent = rowSize() * y;
-    var i = indent + yIndent + Math.floor(x / 8);
-    data[i] |= 1 << (7 - x % 8);
+    var i = indent + yIndent + (x >> 3);
+    data[i] |= b << (7 - (x & 7));
   };
 
   this.render = function () {

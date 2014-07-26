@@ -105,11 +105,9 @@ var Symbol = function (config) {
   };
 
   this.draw = function (config) {
-    for (var x = leftOffset; x < width; ++x) {
-      for (var y = topOffset; y < height; ++y) {
-        if (this.getPixel(x, y)) {
-          config.canvas.put(x - leftOffset + config.position.x, y - topOffset + config.position.y);
-        }
+    for (var y = topOffset; y < height; ++y) {
+      for (var x = leftOffset; x < width; ++x) {
+        config.canvas.put(x - leftOffset + config.position.x, y - topOffset + config.position.y, getPixel1(x, y));
       }
     }
   };
@@ -124,23 +122,33 @@ var Symbol = function (config) {
     data.resize(width32 * height);
     var context = 0;
     var lastBit;
+    var lastWord;
 
     for (var y = 0; y < height; ++y) {
       lastBit = 0;
+      lastWord = 0;
       for (var x = 0; x < width; ++x) {
         context =
           ((context >> 1) & 0x37B) |
-          (this.getPixel(x + 1, y - 2) << 2) |
-          (this.getPixel(x + 2, y - 1) << 7) |
+          (getPixel2(x + 1, y - 2) << 2) |
+          (getPixel1(x + 2, y - 1) << 7) |
           (lastBit << 9);
 
         lastBit = jb2.zp.decodeWithBitContext(jb2.symbolDirectContexts[context]);
-        data.setBit(y * width32 + x, lastBit);
+        lastWord |= lastBit << (x & 31);
+        if ((x & 31) === 31) {
+          data.setWord(y * width32 + x, lastWord);
+          lastWord = 0;
+        }
+      }
+      if ((width & 31) !== 0) {
+        data.setWord(y * width32 + x, lastWord);
+        lastWord = 0;
       }
       context = 0 |
-        (this.getPixel(0, y - 1) << 2) |
-        (this.getPixel(0, y) << 6) |
-        (this.getPixel(1, y) << 7);
+        (getPixel2(0, y - 1) << 2) |
+        (getPixel1(0, y) << 6) |
+        (getPixel1(1, y) << 7);
     }
   };
 
@@ -176,6 +184,36 @@ var Symbol = function (config) {
       return 0;
     }
     return data.getBit(y * width32 + x);
+  };
+
+  var getPixelCache1;
+  var getPixelPosition1 = -1;
+  var getPixel1 = function (x, y) {
+    var coord = (y * width32 + x);
+    var pos =  coord & ~31;
+    if (pos !== getPixelPosition1) {
+      if (x < 0 || y < 0 || x >= width || y >= height) {
+        return 0;
+      }
+      getPixelPosition1 = pos;
+      getPixelCache1 = data.getWord(pos);
+    }
+    return (getPixelCache1 >> (coord & 31)) & 1;
+  };
+
+  var getPixelCache2;
+  var getPixelPosition2 = -1;
+  var getPixel2 = function (x, y) {
+    var coord = (y * width32 + x);
+    var pos = coord & ~31;
+    if (pos !== getPixelPosition2) {
+      if (x < 0 || y < 0 || x >= width || y >= height) {
+        return 0;
+      }
+      getPixelPosition2 = pos;
+      getPixelCache2 = data.getWord(pos);
+    }
+    return (getPixelCache2 >> (coord & 31)) & 1;
   };
 
   this.crop = function () {
