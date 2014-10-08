@@ -41,13 +41,10 @@ var CanvasUtils = function (config) {
     //data[58 .. 60] = 0x00;
   };
 
-  this.put = function (x, y) {
-    if (x < 0 || y < 0) {
-      throw "you know what to do";
-    }
+  this.put = function (x, y, b) {
     var yIndent = rowSize() * y;
-    var i = indent + yIndent + Math.floor(x / 8);
-    data[i] |= 1 << (7 - x % 8);
+    var i = indent + yIndent + (x >> 3);
+    data[i] |= b << (7 - (x & 7));
   };
 
   this.render = function () {
@@ -107,6 +104,8 @@ var JB2Decoder = function (config) {
   var prev1 = new JB2Rect(-1, 0, 0, 1);
   var prev2 = new JB2Rect(-1, 0, 0, 1);
   var prev3 = new JB2Rect(-1, 0, 0, 1);
+  this.lz = lib.getLZ16Array();
+  this.tz = lib.getTZ16Array();
 
   this.data = config.data || null;
   this.getc = config.getter || undefined;
@@ -163,21 +162,23 @@ var Symbol = function (config) {
   var width;
   var width32;
   var height;
+  var topOffset = 0;
+  var leftOffset = 0;
+  var lz = jb2.lz;
+  var tz = jb2.tz;
 
-  this.getWidth = function () {
-    return width;
+  this.getRealWidth = function () {
+    return width - leftOffset;
   };
 
-  this.getHeight = function () {
-    return height;
+  this.getRealHeight = function () {
+    return height - topOffset;
   };
 
   this.draw = function (config) {
-    for (var x = 0; x < width; ++x) {
-      for (var y = 0; y < height; ++y) {
-        if (this.getPixel(x, y)) {
-          config.canvas.put(x + config.position.x, y + config.position.y);
-        }
+    for (var y = topOffset; y < height; ++y) {
+      for (var x = leftOffset; x < width; ++x) {
+        config.canvas.put(x - leftOffset + config.position.x, y - topOffset + config.position.y, getPixel1(x, y));
       }
     }
   };
@@ -192,35 +193,45 @@ var Symbol = function (config) {
     data.resize(width32 * height);
     var context = 0;
     var lastBit;
+    var lastWord;
 
     for (var y = 0; y < height; ++y) {
       lastBit = 0;
+      lastWord = 0;
       for (var x = 0; x < width; ++x) {
         context =
           ((context >> 1) & 0x37B) |
-          (this.getPixel(x + 1, y - 2) << 2) |
-          (this.getPixel(x + 2, y - 1) << 7) |
+          (getPixel2(x + 1, y - 2) << 2) |
+          (getPixel1(x + 2, y - 1) << 7) |
           (lastBit << 9);
 
         lastBit = jb2.zp.decodeWithBitContext(jb2.symbolDirectContexts[context]);
-        data.setBit(y * width32 + x, lastBit);
+        lastWord |= lastBit << (x & 31);
+        if ((x & 31) === 31) {
+          data.setWord(y * width32 + x, lastWord);
+          lastWord = 0;
+        }
+      }
+      if ((width & 31) !== 0) {
+        data.setWord(y * width32 + x, lastWord);
+        lastWord = 0;
       }
       context = 0 |
-        (this.getPixel(0, y - 1) << 2) |
-        (this.getPixel(0, y) << 6) |
-        (this.getPixel(1, y) << 7);
+        (getPixel2(0, y - 1) << 2) |
+        (getPixel1(0, y) << 6) |
+        (getPixel1(1, y) << 7);
     }
   };
 
   this.decodeRefinedSymbol = function (librarySymbol) {
-    width = librarySymbol.getWidth() + jb2.zp.decodeWithNumContext(jb2.symbolWidthDifference);
+    width = librarySymbol.getRealWidth() + jb2.zp.decodeWithNumContext(jb2.symbolWidthDifference);
     width32 = (width + 0x1F) & ~0x1F;
-    height = librarySymbol.getHeight() + jb2.zp.decodeWithNumContext(jb2.symbolHeightDifference);
+    height = librarySymbol.getRealHeight() + jb2.zp.decodeWithNumContext(jb2.symbolHeightDifference);
     data.resize(width32 * height);
 
     var align = {
-      x : ((librarySymbol.getWidth() - 1) >> 1) - ((width - 1) >> 1),
-      y : ((librarySymbol.getHeight() - 0) >> 1) - ((height - 0) >> 1),
+      x : leftOffset + ((librarySymbol.getRealWidth() - 1) >> 1) - ((this.getRealWidth() - 1) >> 1),
+      y : topOffset + ((librarySymbol.getRealHeight() - 0) >> 1) - ((this.getRealHeight()- 0) >> 1),
     };
     for (var y = 0; y < height; ++y) {
       for (var x = 0; x < width; ++x) {
@@ -246,26 +257,69 @@ var Symbol = function (config) {
     return data.getBit(y * width32 + x);
   };
 
+  var getPixelCache1;
+  var getPixelPosition1 = -1;
+  var getPixel1 = function (x, y) {
+    var coord = (y * width32 + x);
+    var pos =  coord & ~31;
+    if (pos !== getPixelPosition1) {
+      if (x < 0 || y < 0 || x >= width || y >= height) {
+        return 0;
+      }
+      getPixelPosition1 = pos;
+      getPixelCache1 = data.getWord(pos);
+    }
+    return (getPixelCache1 >> (coord & 31)) & 1;
+  };
+
+  var getPixelCache2;
+  var getPixelPosition2 = -1;
+  var getPixel2 = function (x, y) {
+    var coord = (y * width32 + x);
+    var pos = coord & ~31;
+    if (pos !== getPixelPosition2) {
+      if (x < 0 || y < 0 || x >= width || y >= height) {
+        return 0;
+      }
+      getPixelPosition2 = pos;
+      getPixelCache2 = data.getWord(pos);
+    }
+    return (getPixelCache2 >> (coord & 31)) & 1;
+  };
+
   this.crop = function () {
     var left = 0;
     var top = 0;
     var _width = width;
     var _height = height;
     var i;
+    var now, worst, word;
 
-    var brk = false;
-    left -= 0x1F;
-    while (!brk) {
-      left += 0x1F;
+    worst = 0x20;
+    while (worst == 0x20) {
       for (i = top; i < _height; ++i) {
-        if (data.getBit(left + width32 * i)) {
-          brk = true;
-          break;
+        word = data.getWord(left + width32 * i);
+        if (word & 0xFFFF) {
+          now = 0;
+          word = word & 0xFFFF;
+        } else {
+          now = 0x10;
+          word = word >>> 0x10;
         }
+	// Fucking crazy bro! LEADINGZEROIS 0000000000111
+	//			                      	    ++++++++++---
+	// TRAILING ZEROS 		    0000000000110
+	//            				    ------------+
+	// our bit array INT32REVERSED|INT32REVERSED|...
+	// So symbol |***| is 00000000...000111, TZ: 0!!!
+	// And symbol |0**| is 00000000...000110, TZ: 1!!!
+        now += /*not fucking LZ*/ tz[word];
+        worst = Math.min(worst, now);
       }
+      left += worst;
     }
 
-    brk = false;
+    var brk = false;
     while (!brk) {
       _width--;
       for (i = top; i < _height; ++i) {
@@ -281,7 +335,7 @@ var Symbol = function (config) {
     top--;
     while (!brk) {
       top++;
-      for (i = left; i < _width; i += 0x1F) {
+      for (i = left; i < _width; i += 0x20) {
         if (data.getWord(i + width32 * top)) {
           brk = true;
           break;
@@ -292,7 +346,7 @@ var Symbol = function (config) {
     brk = false;
     while (!brk) {
       _height--;
-      for (i = left; i < _width; i += 0x1F) {
+      for (i = left; i < _width; i += 0x20) {
         if (data.getWord(i + width32 * _height)) {
           _height++;
           brk = true;
@@ -300,25 +354,10 @@ var Symbol = function (config) {
         }
       }
     }
-
-    _width -= left;
-    _height -= top;
-    var _width32 = (_width + 0x1F) & ~0x1F;
-    var x, y;
-    for (y = 0; y < _height; ++y) {
-      for (x = 0; x < _width; ++x) {
-        data.setBit(y * _width32 + x, this.getPixel(x + left, y + top));
-      }
-    }
-    for (y = 0; y < _height; ++y) {
-      for (x = _width; x < _width32; ++x) {
-        data.setBit(y * _width32 + x, 0);
-      }
-    }
-    data.resize(_width32 * _height);
     width = _width;
-    width32 = _width32;
     height = _height;
+    leftOffset = left;
+    topOffset = top;
   };
 };
 
@@ -350,6 +389,28 @@ var SymbolLibrary = function (config) {
 };
 
 var lib = {
+  getLZ16Array: function () {
+    var res = [];
+    var prev = 0x10000;
+    var fill = 0;
+    for (var i = 0x10000; i-- !== 0; ) {
+      res[i] = fill;
+      if ((i << 1) === prev) {
+        fill++;
+        prev = i;
+      }
+    }
+    return res;
+  },
+  getTZ16Array: function () {
+    var res = [];
+    res[0] = 16;
+    res[1] = 0;
+    for (var i = 2; i < 0x10000; ++i) {
+      res[i] = (i & 1 === 1) ? 0 : res[i >> 1] + 1;
+    }
+    return res;
+  },
   clearArray: function(array) {
     array.length = 0;
   },
@@ -368,7 +429,7 @@ var lib = {
 
   // TODO: Some buggy magic.
   toUnsignedShort: function (a) {
-    return (a & 0xFFFF + 65536) & 0xFFFF;
+    return (a & 0xFFFF);
   },
 
   bitArray : function (n) {
@@ -432,7 +493,50 @@ var Fetcher = function (config, manifest) {
     filePreload.send();
   };
 
-  this.manifest = manifest;
+  this.processManifest = function (json) {
+    var pages = [];
+    var dictionaries = {};
+    if (json.id == "FORM:DJVM" && json.internalChunks) {
+      var chunks = json.internalChunks;
+      for (var i in chunks) {
+        if (chunks[i].type == "dictionary") {
+          var dict = {};
+          dict.name = chunks[i].name;
+          dict.size = chunks[i].size;
+          dict.offset = chunks[i].offset;
+          if (dict.name) {
+            dictionaries[dict.name] = dict;
+          }
+        }
+        if (chunks[i].type == "page") {
+          var page = {};
+          var valid = false;
+          page.offset = chunks[i].offset;
+          page.size = chunks[i].size;
+
+          page.number = chunks[i].pageNumber;
+          for (var j in chunks[i].internalChunks) {
+            var chunkPart = chunks[i].internalChunks[j];
+            switch (chunkPart.id) {
+              case "Sjbz":
+                isValid = true;
+              break;
+              case "INCL":
+                if (chunkPart.info in dictionaries) {
+                  page.dictionary = dictionaries[chunkPart.info];
+                }
+              break;
+              default:
+            }
+          }
+          pages[page.number - 1] = page;
+        }
+      }
+    }
+    return pages;
+  };
+  this.manifest = this.processManifest(manifest);
+
 };
 
 // ============================= Renderer ========================================================
@@ -556,8 +660,8 @@ var Renderer = function (config, manifest) {
           symbol = new Symbol({ jb2 : jb2 });
           symbol.decodeDirectSymbol();
           position = jb2.decodeSymbolPosition({
-            width : symbol.getWidth(),
-            height : symbol.getHeight()
+            width : symbol.getRealWidth(),
+            height : symbol.getRealHeight()
           });
           symbol.draw({
             canvas: this.canvas,
@@ -573,8 +677,8 @@ var Renderer = function (config, manifest) {
           symbol = new Symbol({ jb2 : jb2 });
           symbol.decodeRefinedSymbol(jb2.library.getByIndex(index));
           position = jb2.decodeSymbolPosition({
-            width : symbol.getWidth(),
-            height : symbol.getHeight()
+            width : symbol.getRealWidth(),
+            height : symbol.getRealHeight()
           });
           symbol.draw({
             canvas: this.canvas,
@@ -588,8 +692,8 @@ var Renderer = function (config, manifest) {
           index = zp.decodeWithNumContext(jb2.matchingSymbolIndex);
           symbol = jb2.library.getByIndex(index);
           position = jb2.decodeSymbolPosition({
-            width: symbol.getWidth(),
-            height: symbol.getHeight()
+            width: symbol.getRealWidth(),
+            height: symbol.getRealHeight()
           });
           symbol.draw({
             canvas: this.canvas,
