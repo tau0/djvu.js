@@ -6,20 +6,41 @@
 var Fetcher = function (config, callback) {
   this.downloadPage = function (pageNumber, callback) {
 
-    var left = parseInt(this.manifest[pageNumber].offset);
-    var size = parseInt(this.manifest[pageNumber].size);
-    var right = left + size - 1;
+    var left = parseInt(manifest[pageNumber].offset);
+    var size = parseInt(manifest[pageNumber].size);
 
-    var filePreload = new XMLHttpRequest();
-    filePreload.open("GET", config.url, true);
-    filePreload.setRequestHeader("Range", "bytes=" + left + "-" + right);
-    filePreload.responseType = "arraybuffer";
-    filePreload.onload = function () {
-      var arrayBuffer = filePreload.response;
-      var byteArray = arrayBuffer.byteLength ? new Uint8Array(arrayBuffer) : arrayBuffer;
-      callback(byteArray);
-    };
-    filePreload.send();
+    var right = left + size - 1;
+    var future_for_page = new Promise(function(resolve, reject) {
+      var filePreload = new XMLHttpRequest();
+      filePreload.open("GET", config.url, true);
+      filePreload.setRequestHeader("Range", "bytes=" + left + "-" + right);
+      filePreload.responseType = "arraybuffer";
+      filePreload.onload = function () {
+        var arrayBuffer = filePreload.response;
+        var byteArray = arrayBuffer.byteLength ? new Uint8Array(arrayBuffer) : arrayBuffer;
+        resolve(byteArray);
+      };
+      filePreload.send();
+    });
+    var future_for_dictionary = new Promise(function(resolve, reject) {
+      if (manifest[pageNumber].dictionary) {
+        var filePreload = new XMLHttpRequest();
+        filePreload.open("GET", config.url, true);
+        filePreload.setRequestHeader("Range", "bytes=" + left + "-" + right);
+        filePreload.responseType = "arraybuffer";
+        filePreload.onload = function () {
+          var arrayBuffer = filePreload.response;
+          var byteArray = arrayBuffer.byteLength ? new Uint8Array(arrayBuffer) : arrayBuffer;
+          resolve(byteArray);
+        };
+        filePreload.send();
+      } else {
+        resolve();
+      }
+    });
+    future_for_page.then(function(data) {
+      callback(data);
+    });
   };
 
   this.processManifest = function (json) {
@@ -65,11 +86,12 @@ var Fetcher = function (config, callback) {
     return pages;
   };
 
+  var manifest;
   var filePreload = new XMLHttpRequest();
   filePreload.open("GET", config.manifestUrl, true);
   filePreload.responseType = "json";
   filePreload.onload = function () {
-    this.manifest = this.processManifest(filePreload.response);
+    manifest = this.processManifest(filePreload.response);
     if (callback) {
       callback();
     }
