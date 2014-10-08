@@ -3,7 +3,7 @@
 //
 //
 //
-var Fetcher = function (config, manifest) {
+var Fetcher = function (config, callback) {
   this.downloadPage = function (pageNumber, callback) {
 
     var left = parseInt(this.manifest[pageNumber].offset);
@@ -21,7 +21,6 @@ var Fetcher = function (config, manifest) {
     };
     filePreload.send();
   };
-
 
   this.processManifest = function (json) {
     var pages = [];
@@ -65,14 +64,25 @@ var Fetcher = function (config, manifest) {
     }
     return pages;
   };
-  this.manifest = this.processManifest(manifest);
+
+  var filePreload = new XMLHttpRequest();
+  filePreload.open("GET", config.manifestUrl, true);
+  filePreload.responseType = "json";
+  filePreload.onload = function () {
+    this.manifest = this.processManifest(filePreload.response);
+    if (callback) {
+      callback();
+    }
+    console.log(filePreload.response);
+  }.bind(this);
+  filePreload.send();
 };
 
 // ============================= Renderer ========================================================
 //
 //
 //
-var Renderer = function (config, manifest) {
+var Renderer = function (config, page) {
   this.canvas = config.canvas || null;
   this.getc = function () {
     return this.data[this.pointer++];
@@ -131,21 +141,6 @@ var Renderer = function (config, manifest) {
     this.getChildChunk(Sjbz, FORM);
     this.findSiblingChunk(Sjbz, CHUNK_ID_Sjbz);
     return Sjbz;
-  };
-
-  this.records = {
-    jb2_start_of_image: 0,
-    jb2_new_symbol_add_to_image_and_library: 1,
-    jb2_new_symbol_add_to_library_only: 2,
-    jb2_new_symbol_add_to_image_only: 3,
-    jb2_matched_symbol_with_refinement_add_to_image_and_library: 4,
-    jb2_matched_symbol_with_refinement_add_to_library_only: 5,
-    jb2_matched_symbol_with_refinement_add_to_image_only: 6,
-    jb2_matched_symbol_copy_to_image_without_refinement: 7,
-    jb2_non_symbol_data: 8,
-    jb2_require_dictionary_or_reset: 9,
-    jb2_comment: 10,
-    jb2_end_of_data: 11
   };
 
   this.loadJB2 = function (target) {
@@ -245,19 +240,41 @@ var Renderer = function (config, manifest) {
     return { width: width, height: height };
   };
 
-  this.render = function (target, pageNumber, callback) {
-    this.fetcher.downloadPage(pageNumber, function (binaryData) {
+  this.render = function (page) {
+    if (!page) {
+      throw "Page not specified";
+    }
+    this.fetcher.downloadPage(page.pageNumber, function (binaryData) {
       this.pointer = 0;
       this.data = binaryData;
       var jb2chunk = this.locateJB2Chunk();
-      var response = this.loadJB2(target);
-      if (callback) {
-        callback(response);
+      var response = this.loadJB2(page.target);
+      if (page.callback) {
+        page.callback(response);
       }
     }.bind(this));
   };
 
-  this.fetcher = new Fetcher(config, manifest);
+  this.records = {
+    jb2_start_of_image: 0,
+    jb2_new_symbol_add_to_image_and_library: 1,
+    jb2_new_symbol_add_to_library_only: 2,
+    jb2_new_symbol_add_to_image_only: 3,
+    jb2_matched_symbol_with_refinement_add_to_image_and_library: 4,
+    jb2_matched_symbol_with_refinement_add_to_library_only: 5,
+    jb2_matched_symbol_with_refinement_add_to_image_only: 6,
+    jb2_matched_symbol_copy_to_image_without_refinement: 7,
+    jb2_non_symbol_data: 8,
+    jb2_require_dictionary_or_reset: 9,
+    jb2_comment: 10,
+    jb2_end_of_data: 11
+  };
+
+  this.fetcher = new Fetcher(config, function() {
+    if (page) {
+      this.render(page);
+    }
+  }.bind(this));
 };
 // Constants region:
 // // ============================================================================================
