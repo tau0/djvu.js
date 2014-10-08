@@ -90,7 +90,7 @@ var Renderer = function (config, manifest) {
     var current = chunk;
     while (current) {
       current.skipped += length;
-      current = chunk.parent;
+      current = current.parent;
     }
   };
 
