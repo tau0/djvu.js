@@ -26,7 +26,7 @@ module.exports = function(grunt) {
             "*/\n" +
             '"use strict";\n',
         src: 'src/base/**/*.js',
-        dest: 'djvu/djvu.js'
+        dest: '../djvu/djvu.js'
       }
     },
     jshint: {

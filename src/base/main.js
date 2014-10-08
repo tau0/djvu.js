@@ -6,8 +6,8 @@
 var Fetcher = function (config, manifest) {
   this.downloadPage = function (pageNumber, callback) {
 
-    var left = parseInt(this.manifest.files[pageNumber].offset);
-    var size = parseInt(this.manifest.files[pageNumber].size);
+    var left = parseInt(this.manifest[pageNumber].offset);
+    var size = parseInt(this.manifest[pageNumber].size);
     var right = left + size - 1;
 
     var filePreload = new XMLHttpRequest();
@@ -22,7 +22,50 @@ var Fetcher = function (config, manifest) {
     filePreload.send();
   };
 
-  this.manifest = manifest;
+
+  this.processManifest = function (json) {
+    var pages = [];
+    var dictionaries = {};
+    if (json.id == "FORM:DJVM" && json.internalChunks) {
+      var chunks = json.internalChunks;
+      for (var i in chunks) {
+        if (chunks[i].type == "dictionary") {
+          var dict = {};
+          dict.name = chunks[i].name;
+          dict.size = chunks[i].size;
+          dict.offset = chunks[i].offset;
+          if (dict.name) {
+            dictionaries[dict.name] = dict;
+          }
+        }
+        if (chunks[i].type == "page") {
+          var page = {};
+          var valid = false;
+          page.offset = chunks[i].offset;
+          page.size = chunks[i].size;
+
+          page.number = chunks[i].pageNumber;
+          for (var j in chunks[i].internalChunks) {
+            var chunkPart = chunks[i].internalChunks[j];
+            switch (chunkPart.id) {
+              case "Sjbz":
+                isValid = true;
+              break;
+              case "INCL":
+                if (chunkPart.info in dictionaries) {
+                  page.dictionary = dictionaries[chunkPart.info];
+                }
+              break;
+              default:
+            }
+          }
+          pages[page.number - 1] = page;
+        }
+      }
+    }
+    return pages;
+  };
+  this.manifest = this.processManifest(manifest);
 };
 
 // ============================= Renderer ========================================================
