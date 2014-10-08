@@ -242,14 +242,18 @@ var Renderer = function (config, manifest) {
           throw "Record not defined here: " + record;
       }
     }
+    return { width: width, height: height };
   };
 
-  this.render = function (target, pageNumber) {
+  this.render = function (target, pageNumber, callback) {
     this.fetcher.downloadPage(pageNumber, function (binaryData) {
       this.pointer = 0;
       this.data = binaryData;
       var jb2chunk = this.locateJB2Chunk();
-      return this.loadJB2(target);
+      var response = this.loadJB2(target);
+      if (callback) {
+        callback(response);
+      }
     }.bind(this));
   };
 
