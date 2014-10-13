@@ -6,11 +6,11 @@
 var Fetcher = function (config, callback) {
   this.downloadPage = function (pageNumber, callback) {
 
-    var left = parseInt(manifest[pageNumber].offset);
-    var size = parseInt(manifest[pageNumber].size);
-
-    var right = left + size - 1;
     var future_for_page = new Promise(function(resolve, reject) {
+      var left = parseInt(manifest[pageNumber].offset);
+      var size = parseInt(manifest[pageNumber].size);
+      var right = left + size - 1;
+
       var filePreload = new XMLHttpRequest();
       filePreload.open("GET", config.url, true);
       filePreload.setRequestHeader("Range", "bytes=" + left + "-" + right);
@@ -23,6 +23,10 @@ var Fetcher = function (config, callback) {
       filePreload.send();
     });
     var future_for_dictionary = new Promise(function(resolve, reject) {
+      var left = parseInt(manifest[pageNumber].dictionary.offset);
+      var size = parseInt(manifest[pageNumber].dictionary.size);
+      var right = left + size - 1;
+
       if (manifest[pageNumber].dictionary) {
         var filePreload = new XMLHttpRequest();
         filePreload.open("GET", config.url, true);
@@ -31,15 +35,18 @@ var Fetcher = function (config, callback) {
         filePreload.onload = function () {
           var arrayBuffer = filePreload.response;
           var byteArray = arrayBuffer.byteLength ? new Uint8Array(arrayBuffer) : arrayBuffer;
-          resolve(byteArray);
+          callback(byteArray, true);
+          resolve();
         };
         filePreload.send();
       } else {
         resolve();
       }
     });
-    future_for_page.then(function(data) {
-      callback(data);
+    var future_for_both = Promise.all([ future_for_page, future_for_dictionary ]);
+    future_for_both.then(function(arr) {
+      console.log(arr);
+      callback(arr[0], false);
     });
   };
 
@@ -95,7 +102,6 @@ var Fetcher = function (config, callback) {
     if (callback) {
       callback();
     }
-    console.log(filePreload.response);
   }.bind(this);
   filePreload.send();
 };
@@ -151,6 +157,19 @@ var Renderer = function (config, page) {
     }
   };
 
+  this.locateSharedDictionaryChunk = function () {
+    var FORM = {};
+    var Sjbz = {};
+    this.getChildChunk(FORM, undefined);
+    this.findSiblingChunk(FORM, CHUNK_ID_FORM);
+    if (this.readFourByte() != ID_DJVI) {
+      throw "can't find ID_DJVI Chunk";
+    }
+    this.skipInChunk(FORM, 4);
+    this.getChildChunk(Sjbz, FORM);
+    this.findSiblingChunk(Sjbz, CHUNK_ID_Djbz);
+    return Sjbz;
+  };
   this.locateJB2Chunk = function () {
     var FORM = {};
     var Sjbz = {};
@@ -266,10 +285,16 @@ var Renderer = function (config, page) {
     if (!page) {
       throw "Page not specified";
     }
-    this.fetcher.downloadPage(page.pageNumber, function (binaryData) {
+    var jb2chunk;
+    this.fetcher.downloadPage(page.pageNumber, function (binaryData, isDictionary) {
       this.pointer = 0;
       this.data = binaryData;
-      var jb2chunk = this.locateJB2Chunk();
+      if (!isDictionary) {
+        jb2chunk = this.locateJB2Chunk();
+      } else {
+        jb2chunk = this.locateSharedDictionaryChunk();
+        
+      }
       var response = this.loadJB2(page.target);
       if (page.callback) {
         page.callback(response);
@@ -303,7 +328,9 @@ var Renderer = function (config, page) {
 
 var CHUNK_ID_FORM = 0x464F524D;
 var CHUNK_ID_Sjbz = 0x536A627A;
+var CHUNK_ID_Djbz = 0x446A627A;
 var ID_DJVU = 0x444A5655;
+var ID_DJVI = 0x444A5649;
 
 // ==============================================================================================
 
