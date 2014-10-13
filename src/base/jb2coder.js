@@ -1,14 +1,15 @@
 var JB2Decoder = function (config) {
-  this.imageSize = new ZPNumContext(0, 262142);
-  this.recordType = new ZPNumContext(0, 11);
   this.bigPositiveNumber = 262142;
+  this.imageSize = new ZPNumContext(0, this.bigPositiveNumber);
+  this.recordType = new ZPNumContext(0, 11);
+  this.requredDictionarySize = new ZPNumContext(0, this.bigPositiveNumber);
   this.symbolWidth = new ZPNumContext(0, this.bigPositiveNumber);
   this.symbolHeight = new ZPNumContext(0, this.bigPositiveNumber);
   this.symbolWidthDifference = new ZPNumContext(-this.bigPositiveNumber, this.bigPositiveNumber);
   this.symbolHeightDifference = new ZPNumContext(-this.bigPositiveNumber, this.bigPositiveNumber);
   this.eventualImageRefinement = { value: 0 };
   this.symbolColumnNumber = new ZPNumContext(0, 0);
-  this.symbolRowNumber= new ZPNumContext(0, 0);
+  this.symbolRowNumber = new ZPNumContext(0, 0);
   this.symbolDirectContexts = [];
   this.symbolRefinementContexts = [];
   this.offsetTypeContext = { value : 0 };
@@ -82,7 +83,6 @@ var JB2Decoder = function (config) {
 
     return coords;
   };
-  this.library = new SymbolLibrary();
 };
 
 var Symbol = function (config) {

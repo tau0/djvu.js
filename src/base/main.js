@@ -23,11 +23,11 @@ var Fetcher = function (config, callback) {
       filePreload.send();
     });
     var future_for_dictionary = new Promise(function(resolve, reject) {
-      var left = parseInt(manifest[pageNumber].dictionary.offset);
-      var size = parseInt(manifest[pageNumber].dictionary.size);
-      var right = left + size - 1;
-
       if (manifest[pageNumber].dictionary) {
+        var left = parseInt(manifest[pageNumber].dictionary.offset);
+        var size = parseInt(manifest[pageNumber].dictionary.size);
+        var right = left + size - 1;
+
         var filePreload = new XMLHttpRequest();
         filePreload.open("GET", config.url, true);
         filePreload.setRequestHeader("Range", "bytes=" + left + "-" + right);
@@ -112,6 +112,7 @@ var Fetcher = function (config, callback) {
 //
 var Renderer = function (config, page) {
   this.canvas = config.canvas || null;
+
   this.getc = function () {
     return this.data[this.pointer++];
   };
@@ -170,6 +171,7 @@ var Renderer = function (config, page) {
     this.findSiblingChunk(Sjbz, CHUNK_ID_Djbz);
     return Sjbz;
   };
+
   this.locateJB2Chunk = function () {
     var FORM = {};
     var Sjbz = {};
@@ -184,7 +186,7 @@ var Renderer = function (config, page) {
     return Sjbz;
   };
 
-  this.loadJB2 = function (target) {
+  this.loadJB2 = function (target, isDictionary) {
     var st = (new Date()).getTime();
     var jb2 = new JB2Decoder({
       getter: this.getc,
@@ -197,7 +199,7 @@ var Renderer = function (config, page) {
     var dictionary = 0;
 
     if (record == this.records.jb2_require_dictionary_or_reset) {
-      dictionary = zp.decode(jb2.requredDictionarySize);
+      dictionary = zp.decodeWithNumContext(jb2.requredDictionarySize);
       record = jb2.decodeRecordType();
     }
 
@@ -208,10 +210,12 @@ var Renderer = function (config, page) {
     var width = zp.decodeWithNumContext(jb2.imageSize);
     var height = zp.decodeWithNumContext(jb2.imageSize);
     zp.decodeWithBitContext(jb2.eventualImageRefinement); // TODO: WTF? And why it's here?
-    jb2.symbolColumnNumber.setInterval(1, width);
-    jb2.symbolRowNumber.setInterval(1, height);
 
-    this.canvas.resize({ width: width, height: height });
+    if (!isDictionary) {
+      jb2.symbolColumnNumber.setInterval(1, width);
+      jb2.symbolRowNumber.setInterval(1, height);
+      this.canvas.resize({ width: width, height: height });
+    }
 
     var libCount = 0;
     var symbol = new Symbol({ jb2 : jb2 });
@@ -233,14 +237,20 @@ var Renderer = function (config, page) {
             position: position
           });
           symbol.crop();
-          jb2.library.addSymbol(symbol);
+          this.library.addSymbol(symbol);
+        break;
+        case this.records.jb2_new_symbol_add_to_library_only:
+          symbol = new Symbol({ jb2 : jb2 });
+          symbol.decodeDirectSymbol();
+          symbol.crop();
+          this.library.addSymbol(symbol);
         break;
         case this.records.jb2_matched_symbol_with_refinement_add_to_image_and_library:
-          jb2.matchingSymbolIndex.setInterval(0, jb2.library.getSize() - 1);
+          jb2.matchingSymbolIndex.setInterval(0, this.library.getSize() - 1);
           index = zp.decodeWithNumContext(jb2.matchingSymbolIndex);
 
           symbol = new Symbol({ jb2 : jb2 });
-          symbol.decodeRefinedSymbol(jb2.library.getByIndex(index));
+          symbol.decodeRefinedSymbol(this.library.getByIndex(index));
           position = jb2.decodeSymbolPosition({
             width : symbol.getRealWidth(),
             height : symbol.getRealHeight()
@@ -250,12 +260,21 @@ var Renderer = function (config, page) {
             position: position
           });
           symbol.crop();
-          jb2.library.addSymbol(symbol);
+          this.library.addSymbol(symbol);
+        break;
+        case this.records.jb2_matched_symbol_with_refinement_add_to_library_only:
+          jb2.matchingSymbolIndex.setInterval(0, this.library.getSize() - 1);
+          index = zp.decodeWithNumContext(jb2.matchingSymbolIndex);
+
+          symbol = new Symbol({ jb2 : jb2 });
+          symbol.decodeRefinedSymbol(this.library.getByIndex(index));
+          symbol.crop();
+          this.library.addSymbol(symbol);
         break;
         case this.records.jb2_matched_symbol_copy_to_image_without_refinement:
-          jb2.matchingSymbolIndex.setInterval(0, jb2.library.getSize() - 1);
+          jb2.matchingSymbolIndex.setInterval(0, this.library.getSize() - 1);
           index = zp.decodeWithNumContext(jb2.matchingSymbolIndex);
-          symbol = jb2.library.getByIndex(index);
+          symbol = this.library.getByIndex(index);
           position = jb2.decodeSymbolPosition({
             width: symbol.getRealWidth(),
             height: symbol.getRealHeight()
@@ -267,8 +286,11 @@ var Renderer = function (config, page) {
         break;
         case this.records.jb2_end_of_data:
           lib.log("time: " + ((new Date()).getTime() - st));
-          var img = document.getElementById(target);
-          img.src = this.canvas.render();
+          if (!isDictionary) {
+            var img = document.getElementById(target);
+            img.src = this.canvas.render();
+            this.library = null;
+          }
           jb2 = null;
           zp = null;
           brk = true;
@@ -282,21 +304,24 @@ var Renderer = function (config, page) {
   };
 
   this.render = function (page) {
+    this.library = new SymbolLibrary();
+
     if (!page) {
       throw "Page not specified";
     }
-    var jb2chunk;
     this.fetcher.downloadPage(page.pageNumber, function (binaryData, isDictionary) {
       this.pointer = 0;
       this.data = binaryData;
+
+      var jb2chunk;
       if (!isDictionary) {
         jb2chunk = this.locateJB2Chunk();
       } else {
         jb2chunk = this.locateSharedDictionaryChunk();
         
       }
-      var response = this.loadJB2(page.target);
-      if (page.callback) {
+      var response = this.loadJB2(page.target, isDictionary);
+      if (page.callback && !isDictionary) {
         page.callback(response);
       }
     }.bind(this));
