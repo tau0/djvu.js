@@ -72,7 +72,7 @@ var JB2Decoder = function (config) {
         var b1 = prev1.top + prev1.height;
         var b2 = prev2.top + prev2.height;
         var b3 = prev3.top + prev3.height;
-        baseLine = [b1, b2, b3].sort()[1];
+        baseLine = [b1, b2, b3].sort(function (a, b) { return a - b; })[1];
       }
       coords.y = baseLine - h - this.zp.decodeWithNumContext(this.sameLineRowOffset);
       lineCounter++;
